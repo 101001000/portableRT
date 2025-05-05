@@ -1,13 +1,14 @@
 cmake_minimum_required(VERSION 3.16)
 project(portableRT)
 
-option(USE_OPTIX "Enable OptiX backend" ON)
+option(USE_OPTIX "Enable OptiX backend" OFF)
 
 add_library(portableRT src/portableRT.cpp)
 
 # OPTIX
 if(USE_OPTIX)
     message(STATUS "Building with OptiX support")
+    target_compile_definitions(portableRT PUBLIC USE_OPTIX)
 
     set(OptiX_ROOT "/homelocal/encalle_local/Downloads/NVIDIA-OptiX-SDK-7.5.0-linux64-x86_64" CACHE PATH "OptiX SDK")
 

@@ -19,10 +19,12 @@ int main() {
     bool hit2 = portableRT::intersect_tri<portableRT::Backend::CPU>(vertices, miss_ray);
     std::cout << "Ray 1: " << hit1 << "\nRay 2: " << hit2 << std::endl;}
 
+#ifdef USE_OPTIX
     std::cout << "Testing OPTIX" << std::endl;{
     bool hit1 = portableRT::intersect_tri<portableRT::Backend::OPTIX>(vertices, hit_ray);
     bool hit2 = portableRT::intersect_tri<portableRT::Backend::OPTIX>(vertices, miss_ray);
     std::cout << "Ray 1: " << hit1 << "\nRay 2: " << hit2 << std::endl;}
+#endif
 
     return 0;
 }
