@@ -4,7 +4,7 @@
 
 int main() {
 
-    std::array<float, 9> vertices = {0,0,0, 1,0,0, 0,1,0};
+    std::array<float, 9> vertices = {-1,-1,0, 1,-1,0, 0,1,0};
 
     portableRT::Ray hit_ray;
     hit_ray.origin = std::array<float, 3>{0,0,-1};
@@ -14,11 +14,17 @@ int main() {
     miss_ray.origin = std::array<float, 3> {-2,0,-1};
     miss_ray.direction = std::array<float, 3>{0,0,1};
 
-    bool hit1 = portableRT::intersect_tri(vertices, hit_ray);
-    bool hit2 = portableRT::intersect_tri(vertices, miss_ray);
+    std::cout << "Testing CPU" << std::endl;{
+    bool hit1 = portableRT::intersect_tri<portableRT::Backend::CPU>(vertices, hit_ray);
+    bool hit2 = portableRT::intersect_tri<portableRT::Backend::CPU>(vertices, miss_ray);
+    std::cout << "Ray 1: " << hit1 << "\nRay 2: " << hit2 << std::endl;}
 
-    std::cout << "Ray 1: " << hit1 << std::endl;
-    std::cout << "Ray 2: " << hit2 << std::endl;  
+#ifdef USE_OPTIX
+    std::cout << "Testing OPTIX" << std::endl;{
+    bool hit1 = portableRT::intersect_tri<portableRT::Backend::OPTIX>(vertices, hit_ray);
+    bool hit2 = portableRT::intersect_tri<portableRT::Backend::OPTIX>(vertices, miss_ray);
+    std::cout << "Ray 1: " << hit1 << "\nRay 2: " << hit2 << std::endl;}
+#endif
 
     return 0;
 }
