@@ -1,7 +1,8 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.22)
 project(portableRT)
 
 option(USE_OPTIX "Enable OptiX backend" OFF)
+option(USE_HIP "Enable HIP backend" OFF)
 
 add_library(portableRT src/portableRT.cpp)
 
@@ -51,7 +52,32 @@ else()
     message(STATUS "Building without OptiX")
 endif()
 
+if(USE_HIP)
+    message(STATUS "Building with HIP support")
+    target_compile_definitions(portableRT PUBLIC USE_HIP)
 
+    set(HIP_ROOT "/opt/rocm-5.4.3/" CACHE PATH "HIP SDK")
+    set(HIP_DIR "${HIP_ROOT}/lib/cmake/hip")
+    find_package(HIP REQUIRED)
+
+    enable_language(HIP)
+
+    set_property(TARGET portableRT PROPERTY HIP_ARCHITECTURES gfx1031)
+
+    set(HIP_SRC src/intersect_hip.cpp)
+    set_source_files_properties(${HIP_SRC} PROPERTIES LANGUAGE HIP)
+
+    add_library(portableRT_hip OBJECT ${HIP_SRC})
+    target_compile_features(portableRT_hip PUBLIC cxx_std_17)
+    target_link_libraries(portableRT PUBLIC portableRT_hip)
+    
+    find_library(HIP_LIB amdhip64 HINTS ${HIP_ROOT}/lib REQUIRED)
+    find_library(HSA_LIB hsa-runtime64 HINTS ${HIP_ROOT}/lib REQUIRED)
+
+    target_link_libraries(portableRT PUBLIC ${HIP_LIB} ${HSA_LIB})
+else()
+    message(STATUS "Building without HIP")
+endif()
 
 
 set_target_properties(portableRT PROPERTIES 

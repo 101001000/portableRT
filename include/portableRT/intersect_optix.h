@@ -14,6 +14,7 @@
 #include <stdexcept>
 #include <filesystem>
 
+#include "core.h"
 #define CUDA_CHECK(call)                                                         \
     do {                                                                         \
         cudaError_t _e = (call);                                                 \
