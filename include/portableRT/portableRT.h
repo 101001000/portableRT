@@ -5,3 +5,7 @@
 #ifdef USE_OPTIX
 #include "intersect_optix.h"
 #endif
+
+#ifdef USE_HIP
+#include "intersect_hip.h"
+#endif

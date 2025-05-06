@@ -13,7 +13,7 @@ portableRT is being developed with multiple backends to support a wide range of 
 |----------------|----------------|
 | `CPU_SCALAR`   | ✅ Works        |
 | `OPTIX`        | ✅ Works        |
-| `HIP_ROCM`     | 🔧 In progress |
+| `HIP_ROCM`     | ✅ Works        |
 | `EMBREE_CPU`   | ⏳ Pending      |
 | `EMBREE_SYCL`  | ⏳ Pending      |
 | `SYCL`         | ⏳ Pending      |

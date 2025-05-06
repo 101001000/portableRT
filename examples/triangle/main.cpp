@@ -26,5 +26,12 @@ int main() {
     std::cout << "Ray 1: " << hit1 << "\nRay 2: " << hit2 << std::endl;}
 #endif
 
+#ifdef USE_HIP
+    std::cout << "Testing HIP" << std::endl;{
+    bool hit1 = portableRT::intersect_tri<portableRT::Backend::HIP>(vertices, hit_ray);
+    bool hit2 = portableRT::intersect_tri<portableRT::Backend::HIP>(vertices, miss_ray);
+    std::cout << "Ray 1: " << hit1 << "\nRay 2: " << hit2 << std::endl;}
+#endif
+
     return 0;
 }
