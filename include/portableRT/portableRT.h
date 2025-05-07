@@ -13,3 +13,7 @@
 #ifdef USE_EMBREE_SYCL
 #include "intersect_embree_sycl.h"
 #endif
+
+#ifdef USE_EMBREE_CPU
+#include "intersect_embree_cpu.h"
+#endif

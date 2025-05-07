@@ -7,7 +7,8 @@ namespace portableRT {
         CPU,
         OPTIX,
         HIP,
-        EMBREE_SYCL
+        EMBREE_SYCL,
+        EMBREE_CPU
     };
 
     struct Ray {

@@ -3,7 +3,8 @@ project(portableRT)
 
 option(USE_OPTIX "Enable OptiX backend" OFF)
 option(USE_HIP "Enable HIP backend" OFF)
-option(USE_EMBREE_SYCL "Enable Embree SYCL backend" ON)
+option(USE_EMBREE_SYCL "Enable Embree SYCL backend" OFF)
+option(USE_EMBREE_CPU "Enable Embree CPU backend" ON)
 
 add_library(portableRT src/portableRT.cpp)
 
@@ -92,6 +93,18 @@ if(USE_EMBREE_SYCL)
     target_link_options(portableRT  PUBLIC -fsycl)
 else()
     message(STATUS "Building without Embree-sycl")
+endif()
+
+if(USE_EMBREE_CPU)
+    message(STATUS "Building with Embree-cpu support")
+    target_compile_definitions(portableRT PUBLIC USE_EMBREE_CPU)
+
+    set(embree_DIR "/scratch/homelocal/encalle/embree/lib/cmake/embree-4.4.0/" CACHE PATH "Embree")
+
+    FIND_PACKAGE(embree 4 REQUIRED)
+    TARGET_LINK_LIBRARIES(portableRT PUBLIC embree)
+else()
+    message(STATUS "Building without Embree-cpu")
 endif()
 
 set_target_properties(portableRT PROPERTIES 
