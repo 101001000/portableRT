@@ -2,21 +2,8 @@
 
 portableRT is a C++ library that enables your application to perform ray tracing using all available hardware through a single API. On CPUs, it uses Embree. On GPUs, the user can choose between a general GPGPU approach, ideal for older or compute-focused GPUs without dedicated ray tracing units, or make use of the hardware-accelerated ray tracing units (when available)
 
-This first version is extremely simple and focuses solely on intersecting a ray with a triangle using all the available backends. Scene configuration, parallel execution, automatic backend selection, ray scheduling and many more features are planned for future releases.
+This first version is extremely simple and focuses solely on intersecting a ray with a triangle using all the available backends. It currently works with all the available GPUs Ray tracing cores.
 
-
-## Backend Support
-
-portableRT is being developed with multiple backends to support a wide range of devices. The current backends and their development status are:
-
-| Backend        | Status         |
-|----------------|----------------|
-| `CPU_SCALAR`   | ✅ Works        |
-| `OPTIX`        | ✅ Works        |
-| `HIP_ROCM`     | ✅ Works        |
-| `EMBREE_CPU`   | ✅ Works        |
-| `EMBREE_SYCL`  | ✅ Works        |
-| `SYCL`         | ✅ Works        |
 
 ## Recommended Backends by Device Type
 
@@ -39,21 +26,51 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
 
-### Optional backends
+### Optional Back‑Ends
 
-To enable **OptiX**, add:
+#### **OptiX**
 
-```bash
--DUSE_OPTIX=ON -DOptiX_ROOT=/path/to/OptiX-SDK-7.5.0-linux64-x86_64
-```
+1. [Download OptiX 7.5.0](https://developer.nvidia.com/designworks/optix/downloads/legacy) and extract it.  
+2. Configure CMake:
 
-To enable **HIP-ROCM**, add:
+        -DUSE_OPTIX=ON -DOptiX_ROOT=/path/to/OptiX-SDK-7.5.0-linux64-x86_64
 
-```bash
--DUSE_HIP=ON -DHIP_ROOT=/path/to/rocm
-```
+---
 
-## Example
+#### **HIP‑ROCm**
+
+1. [Install HIP with ROCm](https://rocm.docs.amd.com/projects/HIP/en/latest/install/install.html) (tested with ROCm 5.4.3).  
+2. Configure CMake:
+
+        -DUSE_HIP=ON -DHIP_ROOT=/path/to/rocm
+
+---
+
+#### **Embree + SYCL**
+
+1. Grab the SYCL‑enabled build: [embree‑4.4.0.sycl.x86_64.linux.tar.gz](https://github.com/RenderKit/embree/releases/tag/v4.4.0).  
+   You can reuse the same install for the CPU back‑end.  
+2. Configure CMake:
+
+        -DUSE_EMBREE_SYCL=ON -Dembree_DIR=/path/to/embree-sycl/
+
+---
+
+#### **Embree CPU**
+
+1. Download the CPU build (with or without SYCL): [embree‑4.4.0.x86_64.linux.tar.gz](https://github.com/RenderKit/embree/releases/tag/v4.4.0).  
+2. Configure CMake:
+
+        -DUSE_EMBREE_CPU=ON -Dembree_DIR=/path/to/embree/
+
+---
+
+> **Don’t forget**  
+> • Source `embree_vars.sh` before using any Embree back‑end.  
+> • For SYCL targets (Embree SYCL, generic SYCL), compile with DPC++ 6.0.1 or newer — e.g. [intel/llvm v6.0.1](https://github.com/intel/llvm/tree/v6.0.1).
+
+
+## Usage
 
 ```cpp
 #include <portableRT/portableRT.h>
@@ -66,10 +83,28 @@ int main() {
     portableRT::Ray hit{{0,0,-1}, {0,0,1}};
     portableRT::Ray miss{{-2,0,-1}, {0,0,1}};
 
+    // Compute hit with any CPU
     bool hit_cpu = portableRT::intersect_tri<portableRT::Backend::CPU>(tri, hit);
     bool miss_cpu = portableRT::intersect_tri<portableRT::Backend::CPU>(tri, miss);
 
+    // Compute hit with NVidia RTX GPU RT cores
     bool hit_optix = portableRT::intersect_tri<portableRT::Backend::OPTIX>(tri, hit);
     bool miss_optix = portableRT::intersect_tri<portableRT::Backend::OPTIX>(tri, miss);
+
+    // Compute hit with AMD Radeon Rays GPU RT units
+    bool hit_hip = portableRT::intersect_tri<portableRT::Backend::HIP_ROCM>(tri, hit);
+    bool miss_hip = portableRT::intersect_tri<portableRT::Backend::HIP_ROCM>(tri, miss);
+
+    // Compute hit with Intel GPU Ray Tracing Units
+    bool hit_embreesycl = portableRT::intersect_tri<portableRT::Backend::EMBREE_SYCL>(tri, hit);
+    bool miss_embreesycl = portableRT::intersect_tri<portableRT::Backend::EMBREE_SYCL>(tri, miss);
+
+    // Compute hit with vectorized CPUs
+    bool hit_embreecpu = portableRT::intersect_tri<portableRT::Backend::EMBREE_CPU>(tri, hit);
+    bool miss_embreecpu = portableRT::intersect_tri<portableRT::Backend::EMBREE_CPU>(tri, miss);
+
+    // Compute hit with any parallel device (any GPU/CPU/FPGA)
+    bool hit_sycl = portableRT::intersect_tri<portableRT::Backend::SYCL>(tri, hit);
+    bool miss_sycl = portableRT::intersect_tri<portableRT::Backend::SYCL>(tri, miss);
 }
 ```
