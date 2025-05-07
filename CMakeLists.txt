@@ -3,6 +3,7 @@ project(portableRT)
 
 option(USE_OPTIX "Enable OptiX backend" OFF)
 option(USE_HIP "Enable HIP backend" OFF)
+option(USE_EMBREE_SYCL "Enable Embree SYCL backend" ON)
 
 add_library(portableRT src/portableRT.cpp)
 
@@ -79,6 +80,19 @@ else()
     message(STATUS "Building without HIP")
 endif()
 
+if(USE_EMBREE_SYCL)
+    message(STATUS "Building with Embree-sycl support")
+    target_compile_definitions(portableRT PUBLIC USE_EMBREE_SYCL)
+
+    set(embree_DIR "/scratch/homelocal/encalle/embree/lib/cmake/embree-4.4.0/" CACHE PATH "Embree")
+
+    FIND_PACKAGE(embree 4 REQUIRED)
+    TARGET_LINK_LIBRARIES(portableRT PUBLIC embree)
+    target_compile_options(portableRT PUBLIC -fsycl -Xclang -fsycl-allow-func-ptr -Wno-deprecated-declarations) 
+    target_link_options(portableRT  PUBLIC -fsycl)
+else()
+    message(STATUS "Building without Embree-sycl")
+endif()
 
 set_target_properties(portableRT PROPERTIES 
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"

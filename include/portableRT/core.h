@@ -6,7 +6,8 @@ namespace portableRT {
     enum class Backend{
         CPU,
         OPTIX,
-        HIP
+        HIP,
+        EMBREE_SYCL
     };
 
     struct Ray {

@@ -15,7 +15,7 @@ portableRT is being developed with multiple backends to support a wide range of 
 | `OPTIX`        | ✅ Works        |
 | `HIP_ROCM`     | ✅ Works        |
 | `EMBREE_CPU`   | ⏳ Pending      |
-| `EMBREE_SYCL`  | ⏳ Pending      |
+| `EMBREE_SYCL`  | ✅ Works        |
 | `SYCL`         | ⏳ Pending      |
 
 ## Recommended Backends by Device Type

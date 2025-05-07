@@ -9,3 +9,7 @@
 #ifdef USE_HIP
 #include "intersect_hip.h"
 #endif
+
+#ifdef USE_EMBREE_SYCL
+#include "intersect_embree_sycl.h"
+#endif

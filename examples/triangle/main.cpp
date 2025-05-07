@@ -33,5 +33,12 @@ int main() {
     std::cout << "Ray 1: " << hit1 << "\nRay 2: " << hit2 << std::endl;}
 #endif
 
+#ifdef USE_EMBREE_SYCL
+    std::cout << "Testing EMBREE_SYCL" << std::endl;{
+    bool hit1 = portableRT::intersect_tri<portableRT::Backend::EMBREE_SYCL>(vertices, hit_ray);
+    bool hit2 = portableRT::intersect_tri<portableRT::Backend::EMBREE_SYCL>(vertices, miss_ray);
+    std::cout << "Ray 1: " << hit1 << "\nRay 2: " << hit2 << std::endl;}
+#endif
+
     return 0;
 }
