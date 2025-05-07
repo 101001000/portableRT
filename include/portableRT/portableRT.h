@@ -17,3 +17,7 @@
 #ifdef USE_EMBREE_CPU
 #include "intersect_embree_cpu.h"
 #endif
+
+#ifdef USE_SYCL
+#include "intersect_sycl.h"
+#endif

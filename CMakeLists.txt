@@ -4,7 +4,8 @@ project(portableRT)
 option(USE_OPTIX "Enable OptiX backend" OFF)
 option(USE_HIP "Enable HIP backend" OFF)
 option(USE_EMBREE_SYCL "Enable Embree SYCL backend" OFF)
-option(USE_EMBREE_CPU "Enable Embree CPU backend" ON)
+option(USE_EMBREE_CPU "Enable Embree CPU backend" OFF)
+option(USE_SYCL "Enable SYCL backend" ON)
 
 add_library(portableRT src/portableRT.cpp)
 
@@ -106,6 +107,17 @@ if(USE_EMBREE_CPU)
 else()
     message(STATUS "Building without Embree-cpu")
 endif()
+
+if(USE_SYCL)
+    message(STATUS "Building with SYCL support")
+    target_compile_definitions(portableRT PUBLIC USE_SYCL)
+    
+    target_compile_options(portableRT PUBLIC -fsycl -Xclang -fsycl-allow-func-ptr -Wno-deprecated-declarations) 
+    target_link_options(portableRT  PUBLIC -fsycl)
+else()
+    message(STATUS "Building without SYCL")
+endif()
+
 
 set_target_properties(portableRT PROPERTIES 
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"

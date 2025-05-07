@@ -16,7 +16,7 @@ portableRT is being developed with multiple backends to support a wide range of 
 | `HIP_ROCM`     | ✅ Works        |
 | `EMBREE_CPU`   | ✅ Works        |
 | `EMBREE_SYCL`  | ✅ Works        |
-| `SYCL`         | ⏳ Pending      |
+| `SYCL`         | ✅ Works        |
 
 ## Recommended Backends by Device Type
 
