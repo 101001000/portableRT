@@ -1,4 +1,12 @@
-# portableRT – Portable Ray Tracing
+<p align="center">
+  <img
+    src="https://github.com/user-attachments/assets/22e38b6f-602a-4f84-b981-f3a243f09457" width="200"style="display:block;margin:-20px auto;" alt="logo"/>
+</p>
+
+
+
+
+# portableRT – Portable Ray Tracing 
 
 portableRT is a C++ library that enables your application to perform ray tracing using all available hardware through a single API. On CPUs, it uses Embree. On GPUs, the user can choose between a general GPGPU approach, ideal for older or compute-focused GPUs without dedicated ray tracing units, or make use of the hardware-accelerated ray tracing units (when available)
 
