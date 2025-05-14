@@ -5,7 +5,7 @@ option(USE_OPTIX "Enable OptiX backend" OFF)
 option(USE_HIP "Enable HIP backend" OFF)
 option(USE_EMBREE_SYCL "Enable Embree SYCL backend" OFF)
 option(USE_EMBREE_CPU "Enable Embree CPU backend" OFF)
-option(USE_SYCL "Enable SYCL backend" ON)
+option(USE_SYCL "Enable SYCL backend" OFF)
 
 add_library(portableRT src/portableRT.cpp)
 
@@ -59,7 +59,10 @@ if(USE_HIP)
     message(STATUS "Building with HIP support")
     target_compile_definitions(portableRT PUBLIC USE_HIP)
 
-    set(HIP_ROOT "/opt/rocm-5.4.3/" CACHE PATH "HIP SDK")
+    set(CMAKE_HIP_ARCHITECTURES
+    gfx1030;gfx1031;gfx1032;gfx1033;gfx1034;gfx1035;gfx1036;
+    gfx1100;gfx1101;gfx1102;gfx1103;gfx1150;gfx1151;gfx1200;gfx1201)
+
     set(HIP_DIR "${HIP_ROOT}/lib/cmake/hip")
     find_package(HIP REQUIRED)
 
@@ -72,6 +75,7 @@ if(USE_HIP)
 
     add_library(portableRT_hip OBJECT ${HIP_SRC})
     target_compile_features(portableRT_hip PUBLIC cxx_std_17)
+
     target_link_libraries(portableRT PUBLIC portableRT_hip)
     
     find_library(HIP_LIB amdhip64 HINTS ${HIP_ROOT}/lib REQUIRED)
@@ -82,42 +86,55 @@ else()
     message(STATUS "Building without HIP")
 endif()
 
+if(USE_EMBREE_CPU AND NOT USE_EMBREE_SYCL)
+    message(STATUS "Building with Embree-cpu support")
+    target_compile_definitions(portableRT PUBLIC USE_EMBREE_CPU)
+   
+    set(embree_DIR "${embree_ROOT}/lib/cmake/embree-4.4.0/" CACHE PATH "Embree")
+
+    FIND_PACKAGE(embree 4 REQUIRED)
+    
+    target_include_directories(portableRT PUBLIC
+    "${embree_ROOT}/include"    
+    )
+else()
+    message(STATUS "Building without Embree-cpu")
+endif()
+
 if(USE_EMBREE_SYCL)
     message(STATUS "Building with Embree-sycl support")
     target_compile_definitions(portableRT PUBLIC USE_EMBREE_SYCL)
-
-    set(embree_DIR "/scratch/homelocal/encalle/embree/lib/cmake/embree-4.4.0/" CACHE PATH "Embree")
-
-    FIND_PACKAGE(embree 4 REQUIRED)
-    TARGET_LINK_LIBRARIES(portableRT PUBLIC embree)
-    target_compile_options(portableRT PUBLIC -fsycl -Xclang -fsycl-allow-func-ptr -Wno-deprecated-declarations) 
-    target_link_options(portableRT  PUBLIC -fsycl)
-else()
-    message(STATUS "Building without Embree-sycl")
-endif()
-
-if(USE_EMBREE_CPU)
-    message(STATUS "Building with Embree-cpu support")
     target_compile_definitions(portableRT PUBLIC USE_EMBREE_CPU)
 
-    set(embree_DIR "/scratch/homelocal/encalle/embree/lib/cmake/embree-4.4.0/" CACHE PATH "Embree")
+    add_library(portableRT_embree_sycl OBJECT src/intersect_embree_sycl.cpp)
+    set_source_files_properties(src/intersect_embree_sycl.cpp PROPERTIES LANGUAGE CXX)
+
+    set(embree_DIR "${embree_ROOT}/lib/cmake/embree-4.4.0/" CACHE PATH "Embree")
 
     FIND_PACKAGE(embree 4 REQUIRED)
-    TARGET_LINK_LIBRARIES(portableRT PUBLIC embree)
+    TARGET_LINK_LIBRARIES(portableRT_embree_sycl PUBLIC embree)
+    target_include_directories(portableRT PUBLIC
+    "${embree_ROOT}/include"    
+    )
+    TARGET_LINK_LIBRARIES(portableRT_embree_sycl PUBLIC embree)
+    target_link_options(portableRT_embree_sycl  PUBLIC -fsycl)
+    target_compile_options(portableRT_embree_sycl PRIVATE -fsycl -Xclang -fsycl-allow-func-ptr -Wno-deprecated-declarations) 
+    target_link_libraries(portableRT PUBLIC portableRT_embree_sycl)
 else()
-    message(STATUS "Building without Embree-cpu")
+    message(STATUS "Building without Embree-sycl")
 endif()
 
 if(USE_SYCL)
     message(STATUS "Building with SYCL support")
     target_compile_definitions(portableRT PUBLIC USE_SYCL)
-    
-    target_compile_options(portableRT PUBLIC -fsycl -Xclang -fsycl-allow-func-ptr -Wno-deprecated-declarations) 
-    target_link_options(portableRT  PUBLIC -fsycl)
+    add_library(portableRT_sycl OBJECT src/intersect_sycl.cpp)
+
+    target_compile_options(portableRT_sycl PRIVATE -fsycl -Xclang -fsycl-allow-func-ptr -Wno-deprecated-declarations) 
+    target_link_options(portableRT_sycl  PUBLIC -fsycl)
+    target_link_libraries(portableRT PUBLIC portableRT_sycl)
 else()
     message(STATUS "Building without SYCL")
 endif()
-
 
 set_target_properties(portableRT PROPERTIES 
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
@@ -131,6 +148,8 @@ install(TARGETS portableRT
     LIBRARY DESTINATION lib
 )
 
+
+set_target_properties(portableRT PROPERTIES LINKER_LANGUAGE CXX)
 install(DIRECTORY include/ DESTINATION include)
 
 set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/install)

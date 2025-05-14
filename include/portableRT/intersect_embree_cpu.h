@@ -7,7 +7,7 @@
 
 #include "core.h"
 
-void errorFunction(void* userPtr, enum RTCError error, const char* str)
+void errorFunctionCpu(void* userPtr, enum RTCError error, const char* str)
 {
   printf("error %d: %s\n", error, str);
 }
@@ -30,7 +30,7 @@ RTCDevice initializeDevice()
   if (!device)
     printf("error %d: cannot create device\n", rtcGetDeviceError(NULL));
 
-  rtcSetDeviceErrorFunction(device, errorFunction, NULL);
+  rtcSetDeviceErrorFunction(device, errorFunctionCpu, NULL);
   return device;
 }
 
