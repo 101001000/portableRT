@@ -19,6 +19,20 @@ int main() {
     bool hit2 = portableRT::intersect_tri<portableRT::Backend::CPU>(vertices, miss_ray);
     std::cout << "Ray 1: " << hit1 << "\nRay 2: " << hit2 << std::endl;}
 
+#ifdef USE_EMBREE_CPU
+    std::cout << "Testing EMBREE_CPU" << std::endl;{
+    bool hit1 = portableRT::intersect_tri<portableRT::Backend::EMBREE_CPU>(vertices, hit_ray);
+    bool hit2 = portableRT::intersect_tri<portableRT::Backend::EMBREE_CPU>(vertices, miss_ray);
+    std::cout << "Ray 1: " << hit1 << "\nRay 2: " << hit2 << std::endl;}
+#endif
+
+#ifdef USE_SYCL
+    std::cout << "Testing SYCL" << std::endl;{
+    bool hit1 = portableRT::intersect_tri<portableRT::Backend::SYCL>(vertices, hit_ray);
+    bool hit2 = portableRT::intersect_tri<portableRT::Backend::SYCL>(vertices, miss_ray);
+    std::cout << "Ray 1: " << hit1 << "\nRay 2: " << hit2 << std::endl;}
+#endif
+    
 #ifdef USE_OPTIX
     std::cout << "Testing OPTIX" << std::endl;{
     bool hit1 = portableRT::intersect_tri<portableRT::Backend::OPTIX>(vertices, hit_ray);
@@ -37,20 +51,6 @@ int main() {
     std::cout << "Testing EMBREE_SYCL" << std::endl;{
     bool hit1 = portableRT::intersect_tri<portableRT::Backend::EMBREE_SYCL>(vertices, hit_ray);
     bool hit2 = portableRT::intersect_tri<portableRT::Backend::EMBREE_SYCL>(vertices, miss_ray);
-    std::cout << "Ray 1: " << hit1 << "\nRay 2: " << hit2 << std::endl;}
-#endif
-
-#ifdef USE_EMBREE_CPU
-    std::cout << "Testing EMBREE_CPU" << std::endl;{
-    bool hit1 = portableRT::intersect_tri<portableRT::Backend::EMBREE_CPU>(vertices, hit_ray);
-    bool hit2 = portableRT::intersect_tri<portableRT::Backend::EMBREE_CPU>(vertices, miss_ray);
-    std::cout << "Ray 1: " << hit1 << "\nRay 2: " << hit2 << std::endl;}
-#endif
-
-#ifdef USE_SYCL
-    std::cout << "Testing SYCL" << std::endl;{
-    bool hit1 = portableRT::intersect_tri<portableRT::Backend::SYCL>(vertices, hit_ray);
-    bool hit2 = portableRT::intersect_tri<portableRT::Backend::SYCL>(vertices, miss_ray);
     std::cout << "Ray 1: " << hit1 << "\nRay 2: " << hit2 << std::endl;}
 #endif
 

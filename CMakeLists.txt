@@ -61,7 +61,10 @@ if(USE_HIP)
 
     set(CMAKE_HIP_ARCHITECTURES
     gfx1030;gfx1031;gfx1032;gfx1033;gfx1034;gfx1035;gfx1036;
-    gfx1100;gfx1101;gfx1102;gfx1103;gfx1150;gfx1151;gfx1200;gfx1201)
+    gfx1100;gfx1101;gfx1102;gfx1103)
+
+    set(HIP_C_COMPILER /opt/rocm/llvm/bin/clang)
+    set(HIP_CXX_COMPILER /opt/rocm/llvm/bin/clang++)
 
     set(HIP_DIR "${HIP_ROOT}/lib/cmake/hip")
     find_package(HIP REQUIRED)
