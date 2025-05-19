@@ -8,7 +8,7 @@
 //https://github.com/GPUOpen-LibrariesAndSDKs/HIPRT/blob/main/hiprt/impl/hiprt_device_impl.h
 //https://github.com/GPUOpen-LibrariesAndSDKs/HIPRT/blob/main/hiprt/impl/BvhNode.h
 
-#define CHK(x) if((x)!=hipSuccess){std::cerr<<"HIP "<<hipGetErrorString(x)<<'\n';std::exit(1);}
+#define CHK(x) if((x)!=hipSuccess){std::cerr<<"HIP "<<hipGetErrorString(x)<<'\n'; return 0;}
 
 constexpr uint32_t InvalidValue				 = ~0u;
 

@@ -22,7 +22,7 @@
             std::fprintf(stderr,                                                 \
                         "CUDA error \"%s\" en %s:%d — %s\n",                     \
                         cudaGetErrorString(_e), __FILE__, __LINE__, #call);      \
-            std::exit(static_cast<int>(_e));                                     \
+            return 0;                                                            \
         }                                                                        \
     } while (0)
 
@@ -33,7 +33,7 @@
             std::fprintf(stderr,                                                 \
                         "OptiX error (%d) en %s:%d — %s\n",                      \
                         static_cast<int>(_r), __FILE__, __LINE__, #call);        \
-            std::exit(static_cast<int>(_r));                                     \
+            return 0;                                                            \
         }                                                                        \
     } while (0)
 

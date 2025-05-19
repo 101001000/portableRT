@@ -7,6 +7,8 @@ namespace portableRT{
 template<>
 bool intersect_tri<Backend::SYCL>(const std::array<float, 9> &v, const Ray &ray){
 
+  try{
+
   sycl::device dev = sycl::device(sycl::default_selector_v);
   sycl::queue q = sycl::queue(dev);
 
@@ -76,6 +78,11 @@ bool intersect_tri<Backend::SYCL>(const std::array<float, 9> &v, const Ray &ray)
   bool hit = *res;       
   sycl::free(res, q);          
   return hit;
+
+  }catch(sycl::_V1::exception& e){
+    std::cout << e.what() << std::endl;
+    return false;
+  }
 
   }
 }

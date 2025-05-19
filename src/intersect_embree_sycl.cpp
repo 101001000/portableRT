@@ -249,17 +249,12 @@ namespace portableRT{
 template<>
 bool intersect_tri<Backend::EMBREE_SYCL>(const std::array<float, 9> &v, const Ray &ray){
 
+    try{
+
     enablePersistentJITCache();
 
     /* This will select the first GPU supported by Embree */
-    sycl::device sycl_device;
-    try {
-        sycl_device = sycl::device(rtcSYCLDeviceSelector);
-    } catch(std::exception& e) {
-        std::cerr << "Caught exception creating sycl::device: " << e.what() << std::endl;
-        //embree::printAllSYCLDevices();
-        return 1;
-    }
+    sycl::device sycl_device = sycl::device(rtcSYCLDeviceSelector);
 
     sycl::queue sycl_queue(sycl_device);
     sycl::context sycl_context(sycl_device);
@@ -283,6 +278,12 @@ bool intersect_tri<Backend::EMBREE_SYCL>(const std::array<float, 9> &v, const Ra
     rtcReleaseScene(scene);
     rtcReleaseDevice(device);
     return res;
+
+
+  }catch(sycl::_V1::exception& e){
+    std::cout << e.what() << std::endl;
+    return false;
+  }
 
 }
 }
