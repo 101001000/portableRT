@@ -80,6 +80,16 @@ cmake --build build
 
 ## Usage
 
+
+1. [Download the latest release]([https://github.com/101001000/portableRT/releases](https://github.com/101001000/portableRT/releases/tag/v0.1.0)).  
+2. Include the headers in your project.  
+3. Link against `portableRT.a`.  
+4. Make sure the `lib` folder is added to your `LD_LIBRARY_PATH`.
+
+That's it, you're ready to go.
+
+### Example
+
 ```cpp
 #include <portableRT/portableRT.h>
 #include <array>
