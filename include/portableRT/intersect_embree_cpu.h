@@ -144,7 +144,7 @@ bool castRay(RTCScene scene,
 
 namespace portableRT{
 template<>
-bool intersect_tri<Backend::EMBREE_CPU>(const std::array<float, 9> &v, const Ray &ray){
+bool intersect_tri<BackendType::EMBREE_CPU>(const std::array<float, 9> &v, const Ray &ray){
 
   RTCDevice device = initializeDevice();
   RTCScene scene = initializeScene(device, v);
@@ -158,5 +158,8 @@ bool intersect_tri<Backend::EMBREE_CPU>(const std::array<float, 9> &v, const Ray
   rtcReleaseDevice(device);
   return res;
 
+}
+namespace {
+  inline RegisterBackend<BackendType::EMBREE_CPU, intersect_tri<BackendType::EMBREE_CPU>> register_embree_cpu("Embree CPU");
 }
 }

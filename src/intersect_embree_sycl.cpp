@@ -247,7 +247,7 @@ void castRay(sycl::queue& queue, const RTCTraversable traversable,
 
 namespace portableRT{
 template<>
-bool intersect_tri<Backend::EMBREE_SYCL>(const std::array<float, 9> &v, const Ray &ray){
+bool intersect_tri<BackendType::EMBREE_SYCL>(const std::array<float, 9> &v, const Ray &ray){
 
     try{
 

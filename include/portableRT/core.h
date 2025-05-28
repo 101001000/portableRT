@@ -3,7 +3,14 @@
 #include <array>
 namespace portableRT {
 
-    enum class Backend{
+
+    struct Ray {
+        std::array<float, 3> origin;
+        std::array<float, 3> direction;
+    };
+    
+
+    enum class BackendType{
         CPU,
         OPTIX,
         HIP,
@@ -11,12 +18,6 @@ namespace portableRT {
         EMBREE_CPU,
         SYCL
     };
-
-    struct Ray {
-        std::array<float, 3> origin;
-        std::array<float, 3> direction;
-    };
-
-    template<Backend B>
+    template<BackendType B>
     bool intersect_tri(const std::array<float, 9> &vertices, const Ray &ray);
 }

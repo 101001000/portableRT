@@ -95,7 +95,7 @@ static inline float3 toFloat3( const std::array<float,3>& a )
 namespace portableRT {
 
 template<>
-inline bool intersect_tri<Backend::OPTIX>(const std::array<float, 9> &v, const Ray &ray)
+inline bool intersect_tri<BackendType::OPTIX>(const std::array<float, 9> &v, const Ray &ray)
     {  
 
         OptixDeviceContext context = nullptr;
@@ -408,5 +408,8 @@ inline bool intersect_tri<Backend::OPTIX>(const std::array<float, 9> &v, const R
         //std::cout << "Launch ok" << std::endl;
 
         return h_res;
+    }
+    namespace {
+        inline RegisterBackend<BackendType::OPTIX, intersect_tri<BackendType::OPTIX>> register_optix("Optix");
     }
 }

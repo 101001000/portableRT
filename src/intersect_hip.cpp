@@ -109,7 +109,7 @@ __global__ void kernel(void* bvh, uint4* out, float4 ray_o, float4 ray_d) {
 
 namespace portableRT{
 template<>
-bool intersect_tri<Backend::HIP>(const std::array<float, 9> &v, const Ray &ray){
+bool intersect_tri<BackendType::HIP>(const std::array<float, 9> &v, const Ray &ray){
 
     float3 min_b;
     min_b.x = std::min(v[0], std::min(v[3], v[6]));

@@ -88,41 +88,35 @@ cmake --build build
 
 That's it, you're ready to go.
 
+> **Note:** `intersect_tri()` uses a function pointer internally, which introduces one level of indirection.  
+> If you're targeting maximum performance, you can call the templatized version `intersect_tri<BackendType>()` directly.
+
 ### Example
 
 ```cpp
 #include <portableRT/portableRT.h>
-#include <array>
 #include <iostream>
 
 int main() {
-    std::array<float, 9> tri = {-1,-1,0, 1,-1,0, 0,1,0};
 
-    portableRT::Ray hit{{0,0,-1}, {0,0,1}};
-    portableRT::Ray miss{{-2,0,-1}, {0,0,1}};
+    std::array<float, 9> vertices = {-1,-1,0, 1,-1,0, 0,1,0};
 
-    // Compute hit with any CPU
-    bool hit_cpu = portableRT::intersect_tri<portableRT::Backend::CPU>(tri, hit);
-    bool miss_cpu = portableRT::intersect_tri<portableRT::Backend::CPU>(tri, miss);
+    portableRT::Ray hit_ray;
+    hit_ray.origin = std::array<float, 3>{0,0,-1};
+    hit_ray.direction = std::array<float, 3>{0,0,1};
 
-    // Compute hit with NVidia RTX GPU RT cores
-    bool hit_optix = portableRT::intersect_tri<portableRT::Backend::OPTIX>(tri, hit);
-    bool miss_optix = portableRT::intersect_tri<portableRT::Backend::OPTIX>(tri, miss);
+    portableRT::Ray miss_ray;
+    miss_ray.origin = std::array<float, 3> {-2,0,-1};
+    miss_ray.direction = std::array<float, 3>{0,0,1};
 
-    // Compute hit with AMD Radeon Rays GPU RT units
-    bool hit_hip = portableRT::intersect_tri<portableRT::Backend::HIP_ROCM>(tri, hit);
-    bool miss_hip = portableRT::intersect_tri<portableRT::Backend::HIP_ROCM>(tri, miss);
+    for(auto backend : portableRT::all_backends()){
+        std::cout << "Testing " << backend.name << std::endl;
+        portableRT::select_backend(backend);
+        bool hit1 = portableRT::intersect_tri(vertices, hit_ray);
+        bool hit2 = portableRT::intersect_tri(vertices, miss_ray);
+        std::cout << "Ray 1: " << hit1 << "\nRay 2: " << hit2 << std::endl;
+    }
 
-    // Compute hit with Intel GPU Ray Tracing Units
-    bool hit_embreesycl = portableRT::intersect_tri<portableRT::Backend::EMBREE_SYCL>(tri, hit);
-    bool miss_embreesycl = portableRT::intersect_tri<portableRT::Backend::EMBREE_SYCL>(tri, miss);
-
-    // Compute hit with vectorized CPUs
-    bool hit_embreecpu = portableRT::intersect_tri<portableRT::Backend::EMBREE_CPU>(tri, hit);
-    bool miss_embreecpu = portableRT::intersect_tri<portableRT::Backend::EMBREE_CPU>(tri, miss);
-
-    // Compute hit with any parallel device (any GPU/CPU/FPGA)
-    bool hit_sycl = portableRT::intersect_tri<portableRT::Backend::SYCL>(tri, hit);
-    bool miss_sycl = portableRT::intersect_tri<portableRT::Backend::SYCL>(tri, miss);
+    return 0;
 }
 ```
