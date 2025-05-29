@@ -2,12 +2,12 @@
 #include <sycl/sycl.hpp>
 
 #include "../include/portableRT/core.h"
+#include "../include/portableRT/intersect_sycl.h"
 
 namespace portableRT{
-template<>
-bool intersect_tri<BackendType::SYCL>(const std::array<float, 9> &v, const Ray &ray){
 
-  try{
+  bool SYCLBackend::intersect_tri(const std::array<float, 9> &v, const Ray &ray) const{
+ 	try{
 
   sycl::device dev = sycl::device(sycl::default_selector_v);
   sycl::queue q = sycl::queue(dev);
@@ -83,6 +83,14 @@ bool intersect_tri<BackendType::SYCL>(const std::array<float, 9> &v, const Ray &
     std::cout << e.what() << std::endl;
     return false;
   }
+}
 
-  }
+bool SYCLBackend::is_available() const{
+  try {
+        auto devices = sycl::device::get_devices();
+        return !devices.empty();
+    } catch (const sycl::exception& e) {
+        return false;
+    }                   
+}
 }

@@ -15,6 +15,12 @@
 #include <filesystem>
 
 #include "core.h"
+#include "backend.h"
+
+
+
+
+
 #define CUDA_CHECK(call)                                                         \
     do {                                                                         \
         cudaError_t _e = (call);                                                 \
@@ -92,12 +98,17 @@ static inline float3 toFloat3( const std::array<float,3>& a )
     return make_float3( a[0], a[1], a[2]);
 }
 
+
 namespace portableRT {
 
-template<>
-inline bool intersect_tri<BackendType::OPTIX>(const std::array<float, 9> &v, const Ray &ray)
-    {  
 
+class OptiXBackend : public InvokableBackend<OptiXBackend> {
+public:
+    OptiXBackend() : InvokableBackend(BackendType::OPTIX, "OPTIX") {
+        static RegisterBackend reg(*this);
+    }
+
+    bool intersect_tri(const std::array<float,9>& v, const Ray& ray) const {
         OptixDeviceContext context = nullptr;
         {
             // Initialize CUDA
@@ -409,7 +420,17 @@ inline bool intersect_tri<BackendType::OPTIX>(const std::array<float, 9> &v, con
 
         return h_res;
     }
-    namespace {
-        inline RegisterBackend<BackendType::OPTIX, intersect_tri<BackendType::OPTIX>> register_optix("Optix");
+
+    bool is_available() const override {
+        CUDA_CHECK( cudaFree( 0 ) );
+        OPTIX_CHECK( optixInit() );
+        return true;
     }
+};
+
+
+static OptiXBackend optix_backend;
+
 }
+
+

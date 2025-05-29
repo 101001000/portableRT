@@ -2,41 +2,85 @@
 
 #include <vector>
 #include <string>
+#include <iostream>
 
 #include "core.h"
-#include "intersect.h"
 
 namespace portableRT {
 
-    using IntersectTriFn = bool (*)(const std::array<float,9>&, const Ray&);
+    using IntersectDispatchFn = bool (*)(const void*, const std::array<float, 9>&, const Ray&);
 
-    class Backend{
-        Backend() = delete;
+    class Backend {
     public:
-        Backend(BackendType type, std::string name, IntersectTriFn fn){
-            this->type = type;
-            this->name = name;
-            this->fn = fn;
+        Backend(BackendType type, std::string name, const void* self_ptr, IntersectDispatchFn fn)
+            : type_{type}, name_{std::move(name)}, self_{self_ptr}, intersect_{fn} {}
+
+        BackendType type() const { return type_; }
+        const std::string& name() const { return name_; }
+
+        bool intersect_tri(const std::array<float, 9>& tri, const Ray& r) const {
+            return intersect_(self_, tri, r);
         }
-        BackendType type;
-        std::string name;
-        IntersectTriFn fn;
+
+
+        virtual bool is_available() const = 0;
+
+        IntersectDispatchFn intersect_;
+        const void* self_;
+    private:
+        BackendType type_;
+        std::string name_;
     };
+
+
+    template <class Derived>
+    class InvokableBackend : public Backend {
+    public:
+        InvokableBackend(BackendType type, std::string name)
+            : Backend{type, std::move(name), static_cast<const void*>(this), &dispatch} {}
+    protected:
+        ~InvokableBackend() = default; 
+
+    private:
+        static bool dispatch(const void* self, const std::array<float, 9>& tri, const Ray& r) {
+            return static_cast<const Derived*>(self)->intersect_tri(tri, r);
+        }
+    };
+
 
     inline const Backend* selected_backend = nullptr;
-    inline std::vector<Backend> all_backends_;
-    inline const std::vector<Backend>& all_backends() { return all_backends_; };
+    inline std::vector<const Backend*> all_backends_;
+    inline const std::vector<const Backend*>& all_backends() { return all_backends_; }
 
-    void select_backend(const Backend& backend){
-        selected_backend = &backend;
-        intersect_tri_call = backend.fn;
+    inline std::vector<const Backend*> available_backends_;
+    inline const std::vector<const Backend*>& available_backends() { return available_backends_; }
+
+
+
+    inline IntersectDispatchFn intersect_tri_call = nullptr;
+        
+    inline bool intersect_tri(const std::array<float,9>& v, const Ray& r){
+        return intersect_tri_call(selected_backend->self_, v, r); 
     }
 
-    template<BackendType Type, bool (*Fn)(const std::array<float,9>&, const Ray&)>
+    inline void select_backend(const Backend* backend) {
+        selected_backend = backend;
+        intersect_tri_call =  backend->intersect_;
+    }
+
     struct RegisterBackend {
-        RegisterBackend(const char* name) {
-            all_backends_.push_back({Type, name, Fn});
+        RegisterBackend(const Backend& b) {
+            if(b.is_available()){
+                if(selected_backend == nullptr){
+                    selected_backend = &b;
+                }
+                available_backends_.push_back(&b);
+            }
+            all_backends_.push_back(&b);
         }
     };
+
+
+    
 
 }

@@ -3,13 +3,17 @@
 #include <array>
 #include "core.h"
 #include "backend.h"
-#include "intersect.h"
 
 namespace portableRT {
 
-    template<>
-    bool intersect_tri<BackendType::CPU>(const std::array<float, 9> &vertices, const Ray &ray){
 
+class CPUBackend : public InvokableBackend<CPUBackend> {
+public:
+    CPUBackend() : InvokableBackend(BackendType::CPU, "CPU") {
+        static RegisterBackend reg(*this);
+    }
+
+    bool intersect_tri(const std::array<float,9>& vertices, const Ray& ray) const {
         std::array<float, 3> v0 = {vertices[0], vertices[1], vertices[2]};
         std::array<float, 3> v1 = {vertices[3], vertices[4], vertices[5]};
         std::array<float, 3> v2 = {vertices[6], vertices[7], vertices[8]};
@@ -59,8 +63,13 @@ namespace portableRT {
         return t > 0.0f;
     }
 
-    namespace {
-        inline RegisterBackend<BackendType::CPU, intersect_tri<BackendType::CPU>> register_cpu("CPU");
+    bool is_available() const override {
+        return true;
     }
+};
 
-}   
+
+static CPUBackend cpu_backend;
+
+}
+

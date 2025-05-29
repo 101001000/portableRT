@@ -1,10 +1,23 @@
 #pragma once
 #include "core.h"
+#include "backend.h"
 
 namespace portableRT{
 template<>
 bool intersect_tri<BackendType::SYCL>(const std::array<float, 9> &v, const Ray &ray);
-namespace {
-    inline RegisterBackend<BackendType::SYCL, intersect_tri<BackendType::SYCL>> register_sycl("SYCL");
-}
+
+
+class SYCLBackend : public InvokableBackend<SYCLBackend> {
+public:
+    SYCLBackend() : InvokableBackend(BackendType::SYCL, "SYCL") {
+        static RegisterBackend reg(*this);
+    }
+
+    bool intersect_tri(const std::array<float,9>& vertices, const Ray& ray) const;
+    bool is_available() const;
+};
+
+
+static SYCLBackend sycl_backend;
+
 }

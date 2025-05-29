@@ -4,6 +4,7 @@
 #include <cstring>
 #include <cstdlib>
 #include "../include/portableRT/core.h"
+#include "../include/portableRT/intersect_hip.h"
 
 //https://github.com/GPUOpen-LibrariesAndSDKs/HIPRT/blob/main/hiprt/impl/hiprt_device_impl.h
 //https://github.com/GPUOpen-LibrariesAndSDKs/HIPRT/blob/main/hiprt/impl/BvhNode.h
@@ -108,10 +109,9 @@ __global__ void kernel(void* bvh, uint4* out, float4 ray_o, float4 ray_d) {
 }
 
 namespace portableRT{
-template<>
-bool intersect_tri<BackendType::HIP>(const std::array<float, 9> &v, const Ray &ray){
 
-    float3 min_b;
+bool HIPBackend::intersect_tri(const std::array<float, 9> &v, const Ray &ray) const{
+ 	float3 min_b;
     min_b.x = std::min(v[0], std::min(v[3], v[6]));
     min_b.y = std::min(v[1], std::min(v[4], v[7]));
     min_b.z = std::min(v[2], std::min(v[5], v[8]));
@@ -142,4 +142,26 @@ bool intersect_tri<BackendType::HIP>(const std::array<float, 9> &v, const Ray &r
 
     return hv.w;
 }
+
+bool HIPBackend::is_available() const{
+
+	if (hipInit(0) != hipSuccess) return false;
+    int devCount = 0;
+    if (hipGetDeviceCount(&devCount) != hipSuccess || devCount == 0) return false;
+
+    for (int id = 0; id < devCount; ++id)
+    {
+        hipDeviceProp_t prop{};
+        if (hipGetDeviceProperties(&prop, id) != hipSuccess) continue;
+
+        const std::string arch = prop.gcnArchName;   
+
+        if ((arch.rfind("gfx103", 0) == 0 ||        
+              arch.rfind("gfx110", 0) == 0))            
+            return true;                    
+                   
+    }
+    return false;                       
+}
+
 }

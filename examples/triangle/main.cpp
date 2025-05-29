@@ -15,7 +15,7 @@ int main() {
     miss_ray.direction = std::array<float, 3>{0,0,1};
 
     for(auto backend : portableRT::all_backends()){
-        std::cout << "Testing " << backend.name << std::endl;
+        std::cout << "Testing " << backend->name() << std::endl;
         portableRT::select_backend(backend);
         bool hit1 = portableRT::intersect_tri(vertices, hit_ray);
         bool hit2 = portableRT::intersect_tri(vertices, miss_ray);

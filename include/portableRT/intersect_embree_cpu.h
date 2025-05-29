@@ -143,23 +143,43 @@ bool castRay(RTCScene scene,
 }
 
 namespace portableRT{
-template<>
-bool intersect_tri<BackendType::EMBREE_CPU>(const std::array<float, 9> &v, const Ray &ray){
 
-  RTCDevice device = initializeDevice();
-  RTCScene scene = initializeScene(device, v);
+class EmbreeCPUBackend : public InvokableBackend<EmbreeCPUBackend> {
+public:
+    EmbreeCPUBackend() : InvokableBackend(BackendType::EMBREE_CPU, "Embree CPU") {
+        static RegisterBackend reg(*this);
+    }
 
-  /* This will hit the triangle at t=1. */
-  bool res = castRay(scene, ray.origin[0], ray.origin[1], ray.origin[2], ray.direction[0], ray.direction[1], ray.direction[2]);
+    bool intersect_tri(const std::array<float,9>& tri, const Ray& ray) const {
+          RTCDevice device = initializeDevice();
+          RTCScene scene = initializeScene(device, tri);
 
-  /* Though not strictly necessary in this example, you should
-   * always make sure to release resources allocated through Embree. */
-  rtcReleaseScene(scene);
-  rtcReleaseDevice(device);
-  return res;
+          /* This will hit the triangle at t=1. */
+          bool res = castRay(scene, ray.origin[0], ray.origin[1], ray.origin[2], ray.direction[0], ray.direction[1], ray.direction[2]);
 
-}
-namespace {
-  inline RegisterBackend<BackendType::EMBREE_CPU, intersect_tri<BackendType::EMBREE_CPU>> register_embree_cpu("Embree CPU");
-}
+          /* Though not strictly necessary in this example, you should
+          * always make sure to release resources allocated through Embree. */
+          rtcReleaseScene(scene);
+          rtcReleaseDevice(device);
+          return res;
+    }
+
+    bool is_available() const override {
+      RTCDevice dev = rtcNewDevice(nullptr);
+      if (!dev)              
+          return false;
+
+      RTCError err = rtcGetDeviceError(dev);
+      if (err != RTC_ERROR_NONE) {
+          rtcReleaseDevice(dev);
+          return false;
+      }
+      rtcReleaseDevice(dev);
+      return true;
+    }
+};
+
+
+static EmbreeCPUBackend embreecpu_backend;
+
 }
