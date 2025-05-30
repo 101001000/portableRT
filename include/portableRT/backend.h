@@ -72,7 +72,7 @@ namespace portableRT {
         RegisterBackend(const Backend& b) {
             if(b.is_available()){
                 if(selected_backend == nullptr){
-                    selected_backend = &b;
+                    select_backend(&b);
                 }
                 available_backends_.push_back(&b);
             }
