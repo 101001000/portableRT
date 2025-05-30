@@ -66,6 +66,9 @@ public:
     bool is_available() const override {
         return true;
     }
+
+    void init() override {}
+    void shutdown() override{}
 };
 
 

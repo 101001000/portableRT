@@ -24,6 +24,8 @@ namespace portableRT {
 
 
         virtual bool is_available() const = 0;
+        virtual void init(){}; // TODO make abstract
+        virtual void shutdown(){}; // TODO make abstract
 
         IntersectDispatchFn intersect_;
         const void* self_;
@@ -48,12 +50,14 @@ namespace portableRT {
     };
 
 
-    inline const Backend* selected_backend = nullptr;
-    inline std::vector<const Backend*> all_backends_;
-    inline const std::vector<const Backend*>& all_backends() { return all_backends_; }
+    inline Backend* selected_backend = nullptr;
 
-    inline std::vector<const Backend*> available_backends_;
-    inline const std::vector<const Backend*>& available_backends() { return available_backends_; }
+    // TODO: See if I need lazy initialization for this, as it should be UB
+    inline std::vector<Backend*> all_backends_;
+    inline const std::vector<Backend*>& all_backends() { return all_backends_; }
+
+    inline std::vector<Backend*> available_backends_;
+    inline const std::vector<Backend*>& available_backends() { return available_backends_; }
 
 
 
@@ -63,13 +67,16 @@ namespace portableRT {
         return intersect_tri_call(selected_backend->self_, v, r); 
     }
 
-    inline void select_backend(const Backend* backend) {
+    inline void select_backend(Backend* backend) {
+        if(selected_backend)
+            selected_backend->shutdown();
         selected_backend = backend;
+        backend->init();
         intersect_tri_call =  backend->intersect_;
     }
 
     struct RegisterBackend {
-        RegisterBackend(const Backend& b) {
+        RegisterBackend(Backend& b) {
             if(b.is_available()){
                 if(selected_backend == nullptr){
                     select_backend(&b);

@@ -151,8 +151,8 @@ public:
     }
 
     bool intersect_tri(const std::array<float,9>& tri, const Ray& ray) const {
-          RTCDevice device = initializeDevice();
-          RTCScene scene = initializeScene(device, tri);
+      
+          RTCScene scene = initializeScene(m_device, tri);
 
           /* This will hit the triangle at t=1. */
           bool res = castRay(scene, ray.origin[0], ray.origin[1], ray.origin[2], ray.direction[0], ray.direction[1], ray.direction[2]);
@@ -160,7 +160,6 @@ public:
           /* Though not strictly necessary in this example, you should
           * always make sure to release resources allocated through Embree. */
           rtcReleaseScene(scene);
-          rtcReleaseDevice(device);
           return res;
     }
 
@@ -177,6 +176,17 @@ public:
       rtcReleaseDevice(dev);
       return true;
     }
+
+    void init() override {
+      m_device = initializeDevice();
+    }
+
+    void shutdown() override{
+      rtcReleaseDevice(m_device);
+    }
+
+private:
+  RTCDevice m_device;
 };
 
 
