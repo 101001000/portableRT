@@ -10,3 +10,9 @@ endfunction()
 
 add_example(triangle)
 add_example(backends)
+add_example(bunny)
+add_custom_command(TARGET bunny POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+    ${CMAKE_SOURCE_DIR}/examples/bunny/bunny.obj
+    ${CMAKE_BINARY_DIR}/bin/common/bunny.obj
+)
