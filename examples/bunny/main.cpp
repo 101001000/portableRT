@@ -136,6 +136,7 @@ int main() {
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
     std::cout << "Execution time: " << duration.count() << " ms" << std::endl;
+    std::cout << static_cast<int>((width * height)/(duration.count()/1000.0f)) << "rays/s: " << std::endl;
 
     stbi_write_png("bunny_output.png", width, height, 1, image.data(), width);
 
