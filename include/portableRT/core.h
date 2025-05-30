@@ -18,6 +18,4 @@ namespace portableRT {
         EMBREE_CPU,
         SYCL
     };
-    template<BackendType B>
-    bool intersect_tri(const std::array<float, 9> &vertices, const Ray &ray);
 }

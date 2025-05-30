@@ -247,46 +247,6 @@ void castRay(sycl::queue& queue, const RTCTraversable traversable,
 }
 
 namespace portableRT{
-template<>
-bool intersect_tri<BackendType::EMBREE_SYCL>(const std::array<float, 9> &v, const Ray &ray){
-
-    try{
-
-    enablePersistentJITCache();
-
-    /* This will select the first GPU supported by Embree */
-    sycl::device sycl_device = sycl::device(rtcSYCLDeviceSelector);
-
-    sycl::queue sycl_queue(sycl_device);
-    sycl::context sycl_context(sycl_device);
-
-    RTCDevice device = initializeDevice(sycl_context,sycl_device);
-    RTCScene scene = initializeScene(device, sycl_queue, v);
-    RTCTraversable traversable = rtcGetSceneTraversable(scene);
-
-    Result* result = alignedSYCLMallocDeviceReadWrite<Result>(sycl_queue, 1, 16);
-    result->geomID = RTC_INVALID_GEOMETRY_ID;
-
-    /* This will hit the triangle at t=1. */
-    castRay(sycl_queue, traversable, ray.origin[0], ray.origin[1], ray.origin[2], ray.direction[0], ray.direction[1], ray.direction[2], result);
-
-    bool res = result->geomID != RTC_INVALID_GEOMETRY_ID;
-
-    alignedSYCLFree(sycl_queue, result);
-
-    /* Though not strictly necessary in this example, you should
-    * always make sure to release resources allocated through Embree. */
-    rtcReleaseScene(scene);
-    rtcReleaseDevice(device);
-    return res;
-
-
-  }catch(sycl::_V1::exception& e){
-    std::cout << e.what() << std::endl;
-    return false;
-  }
-
-}
 
 bool EmbreeSyclBackend::intersect_tri(const std::array<float, 9> &v, const Ray &ray) const{
   try{

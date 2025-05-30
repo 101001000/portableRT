@@ -3,9 +3,6 @@
 #include "backend.h"
 
 namespace portableRT{
-template<>
-bool intersect_tri<BackendType::SYCL>(const std::array<float, 9> &v, const Ray &ray);
-
 
 class SYCLBackend : public InvokableBackend<SYCLBackend> {
 public:
