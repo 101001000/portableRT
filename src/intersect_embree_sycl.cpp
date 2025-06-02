@@ -228,7 +228,7 @@ bool EmbreeSYCLBackend::is_available() const {
 }
 
 EmbreeSYCLBackend::EmbreeSYCLBackend()
-    : InvokableBackend(BackendType::EMBREE_SYCL, "Embree SYCL") {
+    : InvokableBackend("Embree SYCL") {
   static RegisterBackend reg(*this);
 }
 

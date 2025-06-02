@@ -6,7 +6,7 @@ namespace portableRT {
 
 class CPUBackend : public InvokableBackend<CPUBackend> {
 public:
-  CPUBackend() : InvokableBackend(BackendType::CPU, "CPU") {
+  CPUBackend() : InvokableBackend("CPU") {
     static RegisterBackend reg(*this);
   }
 

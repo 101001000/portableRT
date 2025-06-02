@@ -9,7 +9,7 @@ struct SYCLBackendImpl {
   sycl::device m_dev;
 };
 
-SYCLBackend::SYCLBackend() : InvokableBackend(BackendType::SYCL, "SYCL") {
+SYCLBackend::SYCLBackend() : InvokableBackend("SYCL") {
   static RegisterBackend reg(*this);
 }
 

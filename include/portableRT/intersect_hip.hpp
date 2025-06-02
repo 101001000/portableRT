@@ -6,7 +6,7 @@ namespace portableRT {
 
 class HIPBackend : public InvokableBackend<HIPBackend> {
 public:
-  HIPBackend() : InvokableBackend(BackendType::HIP, "HIP") {
+  HIPBackend() : InvokableBackend("HIP") {
     static RegisterBackend reg(*this);
   }
 

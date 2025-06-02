@@ -17,11 +17,11 @@ This first version is extremely simple and focuses solely on intersecting a ray 
 
 | Device Type                                      | Recommended Backend      |
 |--------------------------------------------------|--------------------------|
-| NVIDIA GPUs with RT cores                        | `OPTIX`                  |
-| AMD GPUs with Ray Accelerators                   | `HIP_ROCM`               |
-| Intel GPUs with Ray Tracing Units (RTUs)         | `EMBREE_SYCL`            |
-| x86_64 CPUs (Intel/AMD)                          | `EMBREE_CPU`             |
-| Non-x86 CPUs (e.g. ARM, RISC-V)                  | `CPU_SCALAR`             |
+| NVIDIA GPUs with RT cores                        | `OptiX`                  |
+| AMD GPUs with Ray Accelerators                   | `HIP`                    |
+| Intel GPUs with Ray Tracing Units (RTUs)         | `Embree SYCL`            |
+| x86_64 CPUs (Intel/AMD)                          | `Embree CPU`             |
+| Non-x86 CPUs (e.g. ARM, RISC-V)                  | `CPU`                    |
 | GPUs without dedicated ray tracing units (any)   | `SYCL`                   |
 
 

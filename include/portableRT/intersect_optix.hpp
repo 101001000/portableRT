@@ -8,7 +8,7 @@ namespace portableRT {
 
 class OptiXBackend : public InvokableBackend<OptiXBackend> {
 public:
-  OptiXBackend() : InvokableBackend(BackendType::OPTIX, "OptiX") {
+  OptiXBackend() : InvokableBackend("OptiX") {
     static RegisterBackend reg(*this);
   }
 

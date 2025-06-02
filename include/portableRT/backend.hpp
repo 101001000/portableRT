@@ -13,11 +13,10 @@ using IntersectDispatchFn = bool (*)(void *, const std::array<float, 9> &,
 
 class Backend {
 public:
-  Backend(BackendType type, std::string name, void *self_ptr,
+  Backend(std::string name, void *self_ptr,
           IntersectDispatchFn fn)
-      : type_{type}, name_{std::move(name)}, self_{self_ptr}, intersect_{fn} {}
+      : name_{std::move(name)}, self_{self_ptr}, intersect_{fn} {}
 
-  BackendType type() const { return type_; }
   const std::string &name() const { return name_; }
 
   bool intersect_tri(const std::array<float, 9> &tri, const Ray &r) {
@@ -32,14 +31,13 @@ public:
   void *self_;
 
 private:
-  BackendType type_;
   std::string name_;
 };
 
 template <class Derived> class InvokableBackend : public Backend {
 public:
-  InvokableBackend(BackendType type, std::string name)
-      : Backend{type, std::move(name), static_cast<void *>(this), &dispatch} {}
+  InvokableBackend(std::string name)
+      : Backend{std::move(name), static_cast<void *>(this), &dispatch} {}
 
 protected:
   ~InvokableBackend() = default;

@@ -7,7 +7,7 @@ namespace portableRT {
 
 class EmbreeCPUBackend : public InvokableBackend<EmbreeCPUBackend> {
 public:
-  EmbreeCPUBackend() : InvokableBackend(BackendType::EMBREE_CPU, "Embree CPU") {
+  EmbreeCPUBackend() : InvokableBackend("Embree CPU") {
     static RegisterBackend reg(*this);
   }
 
