@@ -11,8 +11,10 @@ public:
         static RegisterBackend reg(*this);
     }
 
-    bool intersect_tri(const std::array<float,9>& vertices, const Ray& ray) const;
-    bool is_available() const;
+    bool intersect_tri(const std::array<float,9>& vertices, const Ray& ray);
+    bool is_available() const override;
+    void init() override;
+    void shutdown() override;
 };
 
 

@@ -109,7 +109,7 @@ int main() {
     miss_ray.origin = std::array<float, 3> {-2,0,-1};
     miss_ray.direction = std::array<float, 3>{0,0,1};
 
-    for(auto backend : portableRT::all_backends()){
+    for(auto backend : portableRT::available_backends()){
         std::cout << "Testing " << backend.name << std::endl;
         portableRT::select_backend(backend);
         bool hit1 = portableRT::intersect_tri(vertices, hit_ray);

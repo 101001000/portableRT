@@ -110,7 +110,7 @@ __global__ void kernel(void* bvh, uint4* out, float4 ray_o, float4 ray_d) {
 
 namespace portableRT{
 
-bool HIPBackend::intersect_tri(const std::array<float, 9> &v, const Ray &ray) const{
+bool HIPBackend::intersect_tri(const std::array<float, 9> &v, const Ray &ray){
  	float3 min_b;
     min_b.x = std::min(v[0], std::min(v[3], v[6]));
     min_b.y = std::min(v[1], std::min(v[4], v[7]));
@@ -130,6 +130,8 @@ bool HIPBackend::intersect_tri(const std::array<float, 9> &v, const Ray &ray) co
 
     leaf.m_flags = ( 2 << 2 ) | ( 1 << 0 );     
     
+
+    //TODO: free missing
     void* d_bvh;
     CHK( hipMalloc(&d_bvh, sizeof(TriangleNode)) );
     CHK( hipMemcpy(d_bvh, &leaf, sizeof(TriangleNode), hipMemcpyHostToDevice) );
@@ -138,9 +140,17 @@ bool HIPBackend::intersect_tri(const std::array<float, 9> &v, const Ray &ray) co
   
     kernel<<<1,1>>>(d_bvh, dHit, {ray.origin[0],ray.origin[1],ray.origin[2],0}, {ray.direction[0],ray.direction[1],ray.direction[2],0});
     CHK( hipDeviceSynchronize() );
-    uint4 hv; CHK( hipMemcpy(&hv,dHit,sizeof(uint4),hipMemcpyDeviceToHost) );
+  uint4 hv; CHK( hipMemcpy(&hv,dHit,sizeof(uint4),hipMemcpyDeviceToHost) );
 
-    return hv.w;
+  return hv.w;
+}
+
+void HIPBackend::init(){
+
+}
+
+void HIPBackend::shutdown(){
+
 }
 
 bool HIPBackend::is_available() const{

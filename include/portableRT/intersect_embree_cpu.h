@@ -133,7 +133,7 @@ public:
       rtcCommitScene(m_scene);
     }
 
-    bool intersect_tri(const std::array<float,9>& tri, const Ray& ray) const {
+    bool intersect_tri(const std::array<float,9>& tri, const Ray& ray) {
       
           float* vertices = (float*) rtcGetGeometryBufferData(m_tri, RTC_BUFFER_TYPE_VERTEX, 0);
           for (int i = 0; i < 9; i++) {

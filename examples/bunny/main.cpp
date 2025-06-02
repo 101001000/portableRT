@@ -105,9 +105,10 @@ int main() {
     auto start = std::chrono::high_resolution_clock::now();
 
     for(int y = 0; y < height; ++y){
-        std::cout << "\r" << std::fixed << std::setprecision(1)
-          << 100.0f * static_cast<float>(y) / height << "%" << std::flush;
         for(int x = 0; x < width; ++x){
+
+            std::cout << "\r" << std::fixed << std::setprecision(3)
+             << 100.0f * static_cast<float>(y * width + x) / (height * width) << "%" << std::flush;
 
             float sx = sensor_size * (static_cast<float>(x) / width -  0.5);
             float sy = sensor_size * (static_cast<float>(y) / height - 0.5);

@@ -1,6 +1,4 @@
-#pragma once
 #include <sycl/sycl.hpp>
-#include <embree4/rtcore.h>
 
 #include "../include/portableRT/core.h"
 #include "../include/portableRT/intersect_embree_sycl.h"
@@ -25,9 +23,6 @@ struct Result {
   float tfar;
 };
 
-/*
- * This function allocated USM memory that is writeable by the device.
- */
 
 template<typename T>
 T* alignedSYCLMallocDeviceReadWrite(const sycl::queue& queue, size_t count, size_t align)
@@ -43,11 +38,6 @@ T* alignedSYCLMallocDeviceReadWrite(const sycl::queue& queue, size_t count, size
   return ptr;
 }
 
-/*
- * This function allocated USM memory that is only readable by the
- * device. Using this mode many small allocations are possible by the
- * application.
- */
 
 template<typename T>
 T* alignedSYCLMallocDeviceReadOnly(const sycl::queue& queue, size_t count, size_t align)
@@ -68,28 +58,13 @@ void alignedSYCLFree(const sycl::queue& queue, void* ptr)
   if (ptr) sycl::free(ptr, queue);
 }
 
-/*
- * We will register this error handler with the device in initializeDevice(),
- * so that we are automatically informed on errors.
- * This is extremely helpful for finding bugs in your code, prevents you
- * from having to add explicit error checking to each Embree API call.
- */
+
 inline void errorFunctionSYCL(void* userPtr, enum RTCError error, const char* str)
 {
   printf("error %s: %s\n", rtcGetErrorString(error), str);
 }
 
-/*
- * Embree has a notion of devices, which are entities that can run 
- * raytracing kernels.
- * We initialize our device here, and then register the error handler so that 
- * we don't miss any errors.
- *
- * rtcNewDevice() takes a configuration string as an argument. See the API docs
- * for more information.
- *
- * Note that RTCDevice is reference-counted.
- */
+
 RTCDevice initializeDevice(sycl::context& sycl_context, sycl::device& sycl_device)
 {
   RTCDevice device = rtcNewSYCLDevice(sycl_context, "");
@@ -104,91 +79,6 @@ RTCDevice initializeDevice(sycl::context& sycl_context, sycl::device& sycl_devic
   return device;
 }
 
-/*
- * Create a scene, which is a collection of geometry objects. Scenes are 
- * what the intersect / occluded functions work on. You can think of a 
- * scene as an acceleration structure, e.g. a bounding-volume hierarchy.
- *
- * Scenes, like devices, are reference-counted.
- */
-RTCScene initializeScene(RTCDevice device, const sycl::queue& queue, const std::array<float, 9>& vs)
-{
-  RTCScene scene = rtcNewScene(device);
-
-  /* 
-   * Create a triangle mesh geometry, and initialize a single triangle.
-   * You can look up geometry types in the API documentation to
-   * find out which type expects which buffers.
-   *
-   * We create buffers directly on the device, but you can also use
-   * shared buffers. For shared buffers, special care must be taken
-   * to ensure proper alignment and padding. This is described in
-   * more detail in the API documentation.
-   */
-  RTCGeometry geom = rtcNewGeometry(device, RTC_GEOMETRY_TYPE_TRIANGLE);
-  
-  float* vertices = alignedSYCLMallocDeviceReadOnly<float>(queue, 3 * 3, 16);
-
-  rtcSetSharedGeometryBuffer(geom,
-                             RTC_BUFFER_TYPE_VERTEX,
-                             0,
-                             RTC_FORMAT_FLOAT3,
-                             vertices,
-                             0,
-                             3*sizeof(float),
-                             3);
-
-  unsigned* indices = alignedSYCLMallocDeviceReadOnly<unsigned>(queue, 3, 16);
-  
-  rtcSetSharedGeometryBuffer(geom,
-                             RTC_BUFFER_TYPE_INDEX,
-                             0,
-                             RTC_FORMAT_UINT3,
-                             indices,
-                             0,
-                             3*sizeof(unsigned),
-                             1);
-
-  if (vertices && indices)
-  {
-    vertices[0] = vs[0]; vertices[1] = vs[1]; vertices[2] = vs[2];
-    vertices[3] = vs[3]; vertices[4] = vs[4]; vertices[5] = vs[5];
-    vertices[6] = vs[6]; vertices[7] = vs[7]; vertices[8] = vs[8];
-
-    indices[0] = 0; indices[1] = 1; indices[2] = 2;
-  }
-
-  /*
-   * You must commit geometry objects when you are done setting them up,
-   * or you will not get any intersections.
-   */
-  rtcCommitGeometry(geom);
-
-  /*
-   * In rtcAttachGeometry(...), the scene takes ownership of the geom
-   * by increasing its reference count. This means that we don't have
-   * to hold on to the geom handle, and may release it. The geom object
-   * will be released automatically when the scene is destroyed.
-   *
-   * rtcAttachGeometry() returns a geometry ID. We could use this to
-   * identify intersected objects later on.
-   */
-  rtcAttachGeometry(scene, geom);
-  rtcReleaseGeometry(geom);
-
-  /*
-   * Like geometry objects, scenes must be committed. This lets
-   * Embree know that it may start building an acceleration structure.
-   */
-  rtcCommitScene(scene);
-
-  return scene;
-}
-
-/*
- * Cast a single ray with origin (ox, oy, oz) and direction
- * (dx, dy, dz).
- */
 
 void castRay(sycl::queue& queue, const RTCTraversable traversable,
              float ox, float oy, float oz,
@@ -248,35 +138,78 @@ void castRay(sycl::queue& queue, const RTCTraversable traversable,
 
 namespace portableRT{
 
-bool EmbreeSyclBackend::intersect_tri(const std::array<float, 9> &v, const Ray &ray) const{
+  struct EmbreeSYCLBackendImpl{
+    sycl::queue m_q;
+    sycl::device m_dev;
+    sycl::context m_context;
+  };
+
+
+  void EmbreeSYCLBackend::initializeScene()
+{
+  m_tri = rtcNewGeometry(m_rtcdevice, RTC_GEOMETRY_TYPE_TRIANGLE);
+  
+  float* vertices = alignedSYCLMallocDeviceReadWrite<float>(m_impl->m_q, 3 * 3, 16);
+
+  rtcSetSharedGeometryBuffer(m_tri,
+                             RTC_BUFFER_TYPE_VERTEX,
+                             0,
+                             RTC_FORMAT_FLOAT3,
+                             vertices,
+                             0,
+                             3*sizeof(float),
+                             3);
+
+  unsigned* indices = alignedSYCLMallocDeviceReadOnly<unsigned>(m_impl->m_q, 3, 16);
+  
+  rtcSetSharedGeometryBuffer(m_tri,
+                             RTC_BUFFER_TYPE_INDEX,
+                             0,
+                             RTC_FORMAT_UINT3,
+                             indices,
+                             0,
+                             3*sizeof(unsigned),
+                             1);
+
+  if (vertices && indices)
+  {
+    vertices[0] = 0; vertices[1] = 0; vertices[2] = 0;
+    vertices[3] = 0; vertices[4] = 0; vertices[5] = 0;
+    vertices[6] = 0; vertices[7] = 0; vertices[8] = 0;
+
+    indices[0] = 0; indices[1] = 1; indices[2] = 2;
+  }
+
+
+  rtcCommitGeometry(m_tri);
+
+
+  rtcAttachGeometry(m_rtcscene, m_tri);
+  rtcCommitScene(m_rtcscene);
+}
+
+bool EmbreeSYCLBackend::intersect_tri(const std::array<float, 9> &tri, const Ray &ray){
   try{
 
-    enablePersistentJITCache();
+    float* vertices = (float*) rtcGetGeometryBufferData(m_tri, RTC_BUFFER_TYPE_VERTEX, 0);
+    for (int i = 0; i < 9; i++) {
+      vertices[i] = tri[i];
+    }
+    rtcCommitGeometry(m_tri);
+    rtcCommitScene(m_rtcscene);
+    m_rtctraversable = rtcGetSceneTraversable(m_rtcscene);
 
-    /* This will select the first GPU supported by Embree */
-    sycl::device sycl_device = sycl::device(rtcSYCLDeviceSelector);
 
-    sycl::queue sycl_queue(sycl_device);
-    sycl::context sycl_context(sycl_device);
-
-    RTCDevice device = initializeDevice(sycl_context,sycl_device);
-    RTCScene scene = initializeScene(device, sycl_queue, v);
-    RTCTraversable traversable = rtcGetSceneTraversable(scene);
-
-    Result* result = alignedSYCLMallocDeviceReadWrite<Result>(sycl_queue, 1, 16);
+    Result* result = alignedSYCLMallocDeviceReadWrite<Result>(m_impl->m_q, 1, 16);
     result->geomID = RTC_INVALID_GEOMETRY_ID;
 
     /* This will hit the triangle at t=1. */
-    castRay(sycl_queue, traversable, ray.origin[0], ray.origin[1], ray.origin[2], ray.direction[0], ray.direction[1], ray.direction[2], result);
+    castRay(m_impl->m_q, m_rtctraversable, ray.origin[0], ray.origin[1], ray.origin[2], ray.direction[0], ray.direction[1], ray.direction[2], result);
 
     bool res = result->geomID != RTC_INVALID_GEOMETRY_ID;
 
-    alignedSYCLFree(sycl_queue, result);
+    alignedSYCLFree(m_impl->m_q, result);
 
-    /* Though not strictly necessary in this example, you should
-    * always make sure to release resources allocated through Embree. */
-    rtcReleaseScene(scene);
-    rtcReleaseDevice(device);
     return res;
 
 
@@ -286,7 +219,7 @@ bool EmbreeSyclBackend::intersect_tri(const std::array<float, 9> &v, const Ray &
   }
 }
 
-bool EmbreeSyclBackend::is_available() const {
+bool EmbreeSYCLBackend::is_available() const {
       try {
         sycl::device gpu{ rtcSYCLDeviceSelector };    
 
@@ -298,6 +231,36 @@ bool EmbreeSyclBackend::is_available() const {
     catch (const sycl::exception&) { 
         return false;
     }
+}
+
+EmbreeSYCLBackend::EmbreeSYCLBackend() : InvokableBackend(BackendType::EMBREE_SYCL, "Embree SYCL") {
+    static RegisterBackend reg(*this);
+}
+
+EmbreeSYCLBackend::~EmbreeSYCLBackend() = default;
+
+void EmbreeSYCLBackend::init(){
+  
+  m_impl = std::make_unique<EmbreeSYCLBackendImpl>();
+  enablePersistentJITCache();
+
+  m_impl->m_dev = sycl::device(rtcSYCLDeviceSelector);
+
+  m_impl->m_q = sycl::queue(m_impl->m_dev);
+  m_impl->m_context = sycl::context(m_impl->m_dev);
+
+  m_rtcdevice = initializeDevice(m_impl->m_context,m_impl->m_dev);
+  m_rtcscene = rtcNewScene(m_rtcdevice);
+  initializeScene();
+  m_rtctraversable = rtcGetSceneTraversable(m_rtcscene);
+}
+
+
+void EmbreeSYCLBackend::shutdown() {
+  rtcReleaseGeometry(m_tri);
+  rtcReleaseScene(m_rtcscene);
+  rtcReleaseDevice(m_rtcdevice);
+  m_impl.reset();
 }
 
 }

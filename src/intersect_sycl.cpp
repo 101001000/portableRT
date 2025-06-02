@@ -1,20 +1,40 @@
-#pragma once
 #include <sycl/sycl.hpp>
-
 #include "../include/portableRT/core.h"
 #include "../include/portableRT/intersect_sycl.h"
 
 namespace portableRT{
 
-  bool SYCLBackend::intersect_tri(const std::array<float, 9> &v, const Ray &ray) const{
+
+
+  struct SYCLBackendImpl{
+    sycl::queue m_q;
+    sycl::device m_dev;
+  };
+
+  SYCLBackend::SYCLBackend() : InvokableBackend(BackendType::SYCL, "SYCL") {
+    static RegisterBackend reg(*this);
+  }
+
+  SYCLBackend::~SYCLBackend() = default;
+
+  void SYCLBackend::init(){
+    m_impl = std::make_unique<SYCLBackendImpl>();
+    m_impl->m_dev = sycl::device(sycl::default_selector_v);
+    m_impl->m_q = sycl::queue(m_impl->m_dev);
+  }
+
+  void SYCLBackend::shutdown(){
+    m_impl.reset();
+  }
+
+  bool SYCLBackend::intersect_tri(const std::array<float, 9> &v, const Ray &ray){
  	try{
 
-  sycl::device dev = sycl::device(sycl::default_selector_v);
-  sycl::queue q = sycl::queue(dev);
 
-  bool* res = sycl::malloc_shared<bool>(1, q);
 
-  q.submit([&](sycl::handler& cgh){
+  bool* res = sycl::malloc_shared<bool>(1, m_impl->m_q);
+
+  m_impl->m_q.submit([&](sycl::handler& cgh){
     cgh.single_task([=](){
       std::array<float, 3> v0 = {v[0], v[1], v[2]};
       std::array<float, 3> v1 = {v[3], v[4], v[5]};
@@ -76,7 +96,7 @@ namespace portableRT{
   }).wait(); 
 
   bool hit = *res;       
-  sycl::free(res, q);          
+  sycl::free(res, m_impl->m_q);          
   return hit;
 
   }catch(sycl::_V1::exception& e){

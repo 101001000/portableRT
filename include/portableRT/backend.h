@@ -8,27 +8,27 @@
 
 namespace portableRT {
 
-    using IntersectDispatchFn = bool (*)(const void*, const std::array<float, 9>&, const Ray&);
+    using IntersectDispatchFn = bool (*)(void*, const std::array<float, 9>&, const Ray&);
 
     class Backend {
     public:
-        Backend(BackendType type, std::string name, const void* self_ptr, IntersectDispatchFn fn)
+        Backend(BackendType type, std::string name, void* self_ptr, IntersectDispatchFn fn)
             : type_{type}, name_{std::move(name)}, self_{self_ptr}, intersect_{fn} {}
 
         BackendType type() const { return type_; }
         const std::string& name() const { return name_; }
 
-        bool intersect_tri(const std::array<float, 9>& tri, const Ray& r) const {
+        bool intersect_tri(const std::array<float, 9>& tri, const Ray& r) {
             return intersect_(self_, tri, r);
         }
 
 
         virtual bool is_available() const = 0;
-        virtual void init(){}; // TODO make abstract
-        virtual void shutdown(){}; // TODO make abstract
+        virtual void init() = 0;
+        virtual void shutdown() = 0;
 
         IntersectDispatchFn intersect_;
-        const void* self_;
+        void* self_;
     private:
         BackendType type_;
         std::string name_;
@@ -39,13 +39,13 @@ namespace portableRT {
     class InvokableBackend : public Backend {
     public:
         InvokableBackend(BackendType type, std::string name)
-            : Backend{type, std::move(name), static_cast<const void*>(this), &dispatch} {}
+            : Backend{type, std::move(name), static_cast<void*>(this), &dispatch} {}
     protected:
         ~InvokableBackend() = default; 
 
     private:
-        static bool dispatch(const void* self, const std::array<float, 9>& tri, const Ray& r) {
-            return static_cast<const Derived*>(self)->intersect_tri(tri, r);
+        static bool dispatch(void* self, const std::array<float, 9>& tri, const Ray& r) {
+            return static_cast<Derived*>(self)->intersect_tri(tri, r);
         }
     };
 
