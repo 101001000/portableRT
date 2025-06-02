@@ -1,10 +1,10 @@
-#include "../include/portableRT/intersect_hip.hpp"
-#include "../include/portableRT/core.hpp"
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <hip/hip_runtime.h>
 #include <iostream>
+
+#include "../include/portableRT/intersect_hip.hpp"
 
 // https://github.com/GPUOpen-LibrariesAndSDKs/HIPRT/blob/main/hiprt/impl/hiprt_device_impl.h
 // https://github.com/GPUOpen-LibrariesAndSDKs/HIPRT/blob/main/hiprt/impl/BvhNode.h

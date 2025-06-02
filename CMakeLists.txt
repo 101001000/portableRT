@@ -7,7 +7,8 @@ option(USE_EMBREE_SYCL "Enable Embree SYCL backend" OFF)
 option(USE_EMBREE_CPU "Enable Embree CPU backend" OFF)
 option(USE_SYCL "Enable SYCL backend" OFF)
 
-add_library(portableRT src/portableRT.cpp)
+# All the files that don't require an specific compiler
+add_library(portableRT src/portableRT.cpp src/intersect_cpu.cpp src/intersect_embree_cpu.cpp src/intersect_optix.cpp)
 
 # OPTIX
 if(USE_OPTIX)
