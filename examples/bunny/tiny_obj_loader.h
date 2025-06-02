@@ -151,7 +151,7 @@ typedef float real_t;
 #endif
 
 typedef enum {
-  TEXTURE_TYPE_NONE,  // default
+  TEXTURE_TYPE_NONE, // default
   TEXTURE_TYPE_SPHERE,
   TEXTURE_TYPE_CUBE_TOP,
   TEXTURE_TYPE_CUBE_BOTTOM,
@@ -162,24 +162,24 @@ typedef enum {
 } texture_type_t;
 
 struct texture_option_t {
-  texture_type_t type;      // -type (default TEXTURE_TYPE_NONE)
-  real_t sharpness;         // -boost (default 1.0?)
-  real_t brightness;        // base_value in -mm option (default 0)
-  real_t contrast;          // gain_value in -mm option (default 1)
-  real_t origin_offset[3];  // -o u [v [w]] (default 0 0 0)
-  real_t scale[3];          // -s u [v [w]] (default 1 1 1)
-  real_t turbulence[3];     // -t u [v [w]] (default 0 0 0)
-  int texture_resolution;   // -texres resolution (No default value in the spec.
-                            // We'll use -1)
-  bool clamp;               // -clamp (default false)
-  char imfchan;  // -imfchan (the default for bump is 'l' and for decal is 'm')
-  bool blendu;   // -blendu (default on)
-  bool blendv;   // -blendv (default on)
-  real_t bump_multiplier;  // -bm (for bump maps only, default 1.0)
+  texture_type_t type;     // -type (default TEXTURE_TYPE_NONE)
+  real_t sharpness;        // -boost (default 1.0?)
+  real_t brightness;       // base_value in -mm option (default 0)
+  real_t contrast;         // gain_value in -mm option (default 1)
+  real_t origin_offset[3]; // -o u [v [w]] (default 0 0 0)
+  real_t scale[3];         // -s u [v [w]] (default 1 1 1)
+  real_t turbulence[3];    // -t u [v [w]] (default 0 0 0)
+  int texture_resolution;  // -texres resolution (No default value in the spec.
+                           // We'll use -1)
+  bool clamp;              // -clamp (default false)
+  char imfchan; // -imfchan (the default for bump is 'l' and for decal is 'm')
+  bool blendu;  // -blendu (default on)
+  bool blendv;  // -blendv (default on)
+  real_t bump_multiplier; // -bm (for bump maps only, default 1.0)
 
   // extension
-  std::string colorspace;  // Explicitly specify color space of stored texel
-                           // value. Usually `sRGB` or `linear` (default empty).
+  std::string colorspace; // Explicitly specify color space of stored texel
+                          // value. Usually `sRGB` or `linear` (default empty).
 };
 
 struct material_t {
@@ -191,21 +191,21 @@ struct material_t {
   real_t transmittance[3];
   real_t emission[3];
   real_t shininess;
-  real_t ior;       // index of refraction
-  real_t dissolve;  // 1 == opaque; 0 == fully transparent
+  real_t ior;      // index of refraction
+  real_t dissolve; // 1 == opaque; 0 == fully transparent
   // illumination model (see http://www.fileformat.info/format/material/)
   int illum;
 
-  int dummy;  // Suppress padding warning.
+  int dummy; // Suppress padding warning.
 
-  std::string ambient_texname;   // map_Ka. For ambient or ambient occlusion.
-  std::string diffuse_texname;   // map_Kd
-  std::string specular_texname;  // map_Ks
-  std::string specular_highlight_texname;  // map_Ns
-  std::string bump_texname;                // map_bump, map_Bump, bump
-  std::string displacement_texname;        // disp
-  std::string alpha_texname;               // map_d
-  std::string reflection_texname;          // refl
+  std::string ambient_texname;  // map_Ka. For ambient or ambient occlusion.
+  std::string diffuse_texname;  // map_Kd
+  std::string specular_texname; // map_Ks
+  std::string specular_highlight_texname; // map_Ns
+  std::string bump_texname;               // map_bump, map_Bump, bump
+  std::string displacement_texname;       // disp
+  std::string alpha_texname;              // map_d
+  std::string reflection_texname;         // refl
 
   texture_option_t ambient_texopt;
   texture_option_t diffuse_texopt;
@@ -218,19 +218,19 @@ struct material_t {
 
   // PBR extension
   // http://exocortex.com/blog/extending_wavefront_mtl_to_support_pbr
-  real_t roughness;            // [0, 1] default 0
-  real_t metallic;             // [0, 1] default 0
-  real_t sheen;                // [0, 1] default 0
-  real_t clearcoat_thickness;  // [0, 1] default 0
-  real_t clearcoat_roughness;  // [0, 1] default 0
-  real_t anisotropy;           // aniso. [0, 1] default 0
-  real_t anisotropy_rotation;  // anisor. [0, 1] default 0
+  real_t roughness;           // [0, 1] default 0
+  real_t metallic;            // [0, 1] default 0
+  real_t sheen;               // [0, 1] default 0
+  real_t clearcoat_thickness; // [0, 1] default 0
+  real_t clearcoat_roughness; // [0, 1] default 0
+  real_t anisotropy;          // aniso. [0, 1] default 0
+  real_t anisotropy_rotation; // anisor. [0, 1] default 0
   real_t pad0;
-  std::string roughness_texname;  // map_Pr
-  std::string metallic_texname;   // map_Pm
-  std::string sheen_texname;      // map_Ps
-  std::string emissive_texname;   // map_Ke
-  std::string normal_texname;     // norm. For normal mapping.
+  std::string roughness_texname; // map_Pr
+  std::string metallic_texname;  // map_Pm
+  std::string sheen_texname;     // map_Ps
+  std::string emissive_texname;  // map_Ke
+  std::string normal_texname;    // norm. For normal mapping.
 
   texture_option_t roughness_texopt;
   texture_option_t metallic_texopt;
@@ -340,9 +340,9 @@ struct joint_and_weight_t {
 };
 
 struct skin_weight_t {
-  int vertex_id;  // Corresponding vertex index in `attrib_t::vertices`.
-                  // Compared to `index_t`, this index must be positive and
-                  // start with 0(does not allow relative indexing)
+  int vertex_id; // Corresponding vertex index in `attrib_t::vertices`.
+                 // Compared to `index_t`, this index must be positive and
+                 // start with 0(does not allow relative indexing)
   std::vector<joint_and_weight_t> weightValues;
 };
 
@@ -357,13 +357,13 @@ struct index_t {
 struct mesh_t {
   std::vector<index_t> indices;
   std::vector<unsigned int>
-      num_face_vertices;          // The number of vertices per
-                                  // face. 3 = triangle, 4 = quad, ...
-  std::vector<int> material_ids;  // per-face material ID
-  std::vector<unsigned int> smoothing_group_ids;  // per-face smoothing group
-                                                  // ID(0 = off. positive value
-                                                  // = group id)
-  std::vector<tag_t> tags;                        // SubD tag
+      num_face_vertices;         // The number of vertices per
+                                 // face. 3 = triangle, 4 = quad, ...
+  std::vector<int> material_ids; // per-face material ID
+  std::vector<unsigned int> smoothing_group_ids; // per-face smoothing group
+                                                 // ID(0 = off. positive value
+                                                 // = group id)
+  std::vector<tag_t> tags;                       // SubD tag
 };
 
 // struct path_t {
@@ -372,12 +372,12 @@ struct mesh_t {
 
 struct lines_t {
   // Linear flattened indices.
-  std::vector<index_t> indices;        // indices for vertices(poly lines)
-  std::vector<int> num_line_vertices;  // The number of vertices per line.
+  std::vector<index_t> indices;       // indices for vertices(poly lines)
+  std::vector<int> num_line_vertices; // The number of vertices per line.
 };
 
 struct points_t {
-  std::vector<index_t> indices;  // indices for points
+  std::vector<index_t> indices; // indices for points
 };
 
 struct shape_t {
@@ -389,17 +389,17 @@ struct shape_t {
 
 // Vertex attributes
 struct attrib_t {
-  std::vector<real_t> vertices;  // 'v'(xyz)
+  std::vector<real_t> vertices; // 'v'(xyz)
 
   // For backward compatibility, we store vertex weight in separate array.
-  std::vector<real_t> vertex_weights;  // 'v'(w)
-  std::vector<real_t> normals;         // 'vn'
-  std::vector<real_t> texcoords;       // 'vt'(uv)
+  std::vector<real_t> vertex_weights; // 'v'(w)
+  std::vector<real_t> normals;        // 'vn'
+  std::vector<real_t> texcoords;      // 'vt'(uv)
 
   // For backward compatibility, we store texture coordinate 'w' in separate
   // array.
-  std::vector<real_t> texcoord_ws;  // 'vt'(w)
-  std::vector<real_t> colors;       // extension: vertex colors
+  std::vector<real_t> texcoord_ws; // 'vt'(w)
+  std::vector<real_t> colors;      // extension: vertex colors
 
   //
   // TinyObj extension.
@@ -448,19 +448,13 @@ struct callback_t {
   void (*object_cb)(void *user_data, const char *name);
 
   callback_t()
-      : vertex_cb(NULL),
-        vertex_color_cb(NULL),
-        normal_cb(NULL),
-        texcoord_cb(NULL),
-        index_cb(NULL),
-        usemtl_cb(NULL),
-        mtllib_cb(NULL),
-        group_cb(NULL),
-        object_cb(NULL) {}
+      : vertex_cb(NULL), vertex_color_cb(NULL), normal_cb(NULL),
+        texcoord_cb(NULL), index_cb(NULL), usemtl_cb(NULL), mtllib_cb(NULL),
+        group_cb(NULL), object_cb(NULL) {}
 };
 
 class MaterialReader {
- public:
+public:
   MaterialReader() {}
   virtual ~MaterialReader();
 
@@ -474,7 +468,7 @@ class MaterialReader {
 /// Read .mtl from a file.
 ///
 class MaterialFileReader : public MaterialReader {
- public:
+public:
   // Path could contain separator(';' in Windows, ':' in Posix)
   explicit MaterialFileReader(const std::string &mtl_basedir)
       : m_mtlBaseDir(mtl_basedir) {}
@@ -484,7 +478,7 @@ class MaterialFileReader : public MaterialReader {
                           std::map<std::string, int> *matMap, std::string *warn,
                           std::string *err) TINYOBJ_OVERRIDE;
 
- private:
+private:
   std::string m_mtlBaseDir;
 };
 
@@ -492,7 +486,7 @@ class MaterialFileReader : public MaterialReader {
 /// Read .mtl from a stream.
 ///
 class MaterialStreamReader : public MaterialReader {
- public:
+public:
   explicit MaterialStreamReader(std::istream &inStream)
       : m_inStream(inStream) {}
   virtual ~MaterialStreamReader() TINYOBJ_OVERRIDE {}
@@ -501,13 +495,13 @@ class MaterialStreamReader : public MaterialReader {
                           std::map<std::string, int> *matMap, std::string *warn,
                           std::string *err) TINYOBJ_OVERRIDE;
 
- private:
+private:
   std::istream &m_inStream;
 };
 
 // v2 API
 struct ObjReaderConfig {
-  bool triangulate;  // triangulate polygon?
+  bool triangulate; // triangulate polygon?
 
   // Currently not used.
   // "simple" or empty: Create triangle fan
@@ -535,7 +529,7 @@ struct ObjReaderConfig {
 /// Wavefront .obj reader class(v2 API)
 ///
 class ObjReader {
- public:
+public:
   ObjReader() : valid_(false) {}
 
   ///
@@ -580,7 +574,7 @@ class ObjReader {
   ///
   const std::string &Error() const { return error_; }
 
- private:
+private:
   bool valid_;
 
   attrib_t attrib_;
@@ -650,9 +644,9 @@ bool ParseTextureNameAndOption(std::string *texname, texture_option_t *texopt,
 
 /// =<<========== Legacy v1 API =============================================
 
-}  // namespace tinyobj
+} // namespace tinyobj
 
-#endif  // TINY_OBJ_LOADER_H_
+#endif // TINY_OBJ_LOADER_H_
 
 #ifdef TINYOBJLOADER_IMPLEMENTATION
 #include <cassert>
@@ -688,7 +682,7 @@ bool ParseTextureNameAndOption(std::string *texname, texture_option_t *texopt,
 
 #endif
 
-#endif  // TINYOBJLOADER_USE_MAPBOX_EARCUT
+#endif // TINYOBJLOADER_USE_MAPBOX_EARCUT
 
 namespace tinyobj {
 
@@ -706,9 +700,9 @@ struct vertex_index_t {
 // index + smoothing group.
 struct face_t {
   unsigned int
-      smoothing_group_id;  // smoothing group id. 0 = smoothing groupd is off.
+      smoothing_group_id; // smoothing group id. 0 = smoothing groupd is off.
   int pad_;
-  std::vector<vertex_index_t> vertex_indices;  // face vertex indices.
+  std::vector<vertex_index_t> vertex_indices; // face vertex indices.
 
   face_t() : smoothing_group_id(0), pad_(0) {}
 };
@@ -780,17 +774,19 @@ static std::istream &safeGetline(std::istream &is, std::string &t) {
     for (;;) {
       int c = sb->sbumpc();
       switch (c) {
-        case '\n':
-          return is;
-        case '\r':
-          if (sb->sgetc() == '\n') sb->sbumpc();
-          return is;
-        case EOF:
-          // Also handle the case when the last line has no line ending
-          if (t.empty()) is.setstate(std::ios::eofbit);
-          return is;
-        default:
-          t += static_cast<char>(c);
+      case '\n':
+        return is;
+      case '\r':
+        if (sb->sgetc() == '\n')
+          sb->sbumpc();
+        return is;
+      case EOF:
+        // Also handle the case when the last line has no line ending
+        if (t.empty())
+          is.setstate(std::ios::eofbit);
+        return is;
+      default:
+        t += static_cast<char>(c);
       }
     }
   }
@@ -799,12 +795,11 @@ static std::istream &safeGetline(std::istream &is, std::string &t) {
 }
 
 #define IS_SPACE(x) (((x) == ' ') || ((x) == '\t'))
-#define IS_DIGIT(x) \
+#define IS_DIGIT(x)                                                            \
   (static_cast<unsigned int>((x) - '0') < static_cast<unsigned int>(10))
 #define IS_NEW_LINE(x) (((x) == '\r') || ((x) == '\n') || ((x) == '\0'))
 
-template <typename T>
-static inline std::string toString(const T &t) {
+template <typename T> static inline std::string toString(const T &t) {
   std::stringstream ss;
   ss << t;
   return ss.str();
@@ -841,14 +836,14 @@ static inline bool fixIndex(int idx, int n, int *ret, bool allow_zero,
   }
 
   if (idx < 0) {
-    (*ret) = n + idx;  // negative value = relative
+    (*ret) = n + idx; // negative value = relative
     if ((*ret) < 0) {
-      return false;  // invalid relative index
+      return false; // invalid relative index
     }
     return true;
   }
 
-  return false;  // never reach here.
+  return false; // never reach here.
 }
 
 static inline std::string parseString(const char **token) {
@@ -953,11 +948,13 @@ static bool tryParseDouble(const char *s, const char *s_end, double *result) {
     }
 
     // We must make sure we actually got something.
-    if (read == 0) goto fail;
+    if (read == 0)
+      goto fail;
   }
 
   // We allow numbers of form "#", "###" etc.
-  if (!end_not_reached) goto assemble;
+  if (!end_not_reached)
+    goto assemble;
 
   // Read the decimal part.
   if (*curr == '.') {
@@ -982,7 +979,8 @@ static bool tryParseDouble(const char *s, const char *s_end, double *result) {
     goto assemble;
   }
 
-  if (!end_not_reached) goto assemble;
+  if (!end_not_reached)
+    goto assemble;
 
   // Read the exponent part.
   if (*curr == 'e' || *curr == 'E') {
@@ -1004,7 +1002,7 @@ static bool tryParseDouble(const char *s, const char *s_end, double *result) {
       // To avoid annoying MSVC's min/max macro definiton,
       // Use hardcoded int max value
       if (exponent >
-          (2147483647 / 10)) {  // 2147483647 = std::numeric_limits<int>::max()
+          (2147483647 / 10)) { // 2147483647 = std::numeric_limits<int>::max()
         // Integer overflow
         goto fail;
       }
@@ -1015,7 +1013,8 @@ static bool tryParseDouble(const char *s, const char *s_end, double *result) {
       end_not_reached = (curr != s_end);
     }
     exponent *= (exp_sign == '+' ? 1 : -1);
-    if (read == 0) goto fail;
+    if (read == 0)
+      goto fail;
   }
 
 assemble:
@@ -1066,7 +1065,7 @@ static inline void parseReal3(real_t *x, real_t *y, real_t *z,
   (*z) = parseReal(token, default_z);
 }
 
-#if 0  // not used
+#if 0 // not used
 static inline void parseV(real_t *x, real_t *y, real_t *z, real_t *w,
                           const char **token, const double default_x = 0.0,
                           const double default_y = 0.0,
@@ -1112,7 +1111,7 @@ static inline int parseVertexWithColor(real_t *x, real_t *y, real_t *z,
 
   if (!has_b) {
     (*r) = (*g) = (*b) = 1.0;
-    return 3;  // treated as xyz
+    return 3; // treated as xyz
   }
 
   return 6;
@@ -1133,8 +1132,9 @@ static inline bool parseOnOff(const char **token, bool default_value = true) {
   return ret;
 }
 
-static inline texture_type_t parseTextureType(
-    const char **token, texture_type_t default_value = TEXTURE_TYPE_NONE) {
+static inline texture_type_t
+parseTextureType(const char **token,
+                 texture_type_t default_value = TEXTURE_TYPE_NONE) {
   (*token) += strspn((*token), " \t");
   const char *end = (*token) + strcspn((*token), " \t\r");
   texture_type_t ty = default_value;
@@ -1169,7 +1169,7 @@ static tag_sizes parseTagTriple(const char **token) {
     return ts;
   }
 
-  (*token)++;  // Skip '/'
+  (*token)++; // Skip '/'
 
   (*token) += strspn((*token), " \t");
   ts.num_reals = atoi((*token));
@@ -1177,7 +1177,7 @@ static tag_sizes parseTagTriple(const char **token) {
   if ((*token)[0] != '/') {
     return ts;
   }
-  (*token)++;  // Skip '/'
+  (*token)++; // Skip '/'
 
   ts.num_strings = parseInt(token);
 
@@ -1227,7 +1227,7 @@ static bool parseTriple(const char **token, int vsize, int vnsize, int vtsize,
   }
 
   // i/j/k
-  (*token)++;  // skip '/'
+  (*token)++; // skip '/'
   if (!fixIndex(atoi((*token)), vnsize, &vi.vn_idx, true, context)) {
     return false;
   }
@@ -1240,7 +1240,7 @@ static bool parseTriple(const char **token, int vsize, int vnsize, int vtsize,
 
 // Parse raw triples: i, i/j/k, i//k, i/j
 static vertex_index_t parseRawTriple(const char **token) {
-  vertex_index_t vi(static_cast<int>(0));  // 0 is an invalid index in OBJ
+  vertex_index_t vi(static_cast<int>(0)); // 0 is an invalid index in OBJ
 
   vi.v_idx = atoi((*token));
   (*token) += strcspn((*token), "/ \t\r");
@@ -1265,7 +1265,7 @@ static vertex_index_t parseRawTriple(const char **token) {
   }
 
   // i/j/k
-  (*token)++;  // skip '/'
+  (*token)++; // skip '/'
   vi.vn_idx = atoi((*token));
   (*token) += strcspn((*token), "/ \t\r");
   return vi;
@@ -1277,10 +1277,10 @@ bool ParseTextureNameAndOption(std::string *texname, texture_option_t *texopt,
   bool found_texname = false;
   std::string texture_name;
 
-  const char *token = linebuf;  // Assume line ends with NULL
+  const char *token = linebuf; // Assume line ends with NULL
 
   while (!IS_NEW_LINE((*token))) {
-    token += strspn(token, " \t");  // skip space
+    token += strspn(token, " \t"); // skip space
     if ((0 == strncmp(token, "-blendu", 7)) && IS_SPACE((token[7]))) {
       token += 8;
       texopt->blendu = parseOnOff(&token, /* default */ true);
@@ -1319,7 +1319,7 @@ bool ParseTextureNameAndOption(std::string *texname, texture_option_t *texopt,
       token += 9;
       token += strspn(token, " \t");
       const char *end = token + strcspn(token, " \t\r");
-      if ((end - token) == 1) {  // Assume one char for -imfchan
+      if ((end - token) == 1) { // Assume one char for -imfchan
         texopt->imfchan = (*token);
       }
       token = end;
@@ -1397,7 +1397,7 @@ static void InitMaterial(material_t *material) {
   InitTexOpt(&material->sheen_texopt, /* is_bump */ false);
   InitTexOpt(&material->emissive_texopt, /* is_bump */ false);
   InitTexOpt(&material->normal_texopt,
-             /* is_bump */ false);  // @fixme { is_bump will be true? }
+             /* is_bump */ false); // @fixme { is_bump will be true? }
   material->name = "";
   material->ambient_texname = "";
   material->diffuse_texname = "";
@@ -1675,7 +1675,7 @@ static bool exportGroupsToShape(shape_t *shape, const PrimGroup &prim_group,
 
           // first polyline define the main polygon.
           // following polylines define holes(not used in tinyobj).
-          std::vector<std::vector<Point> > polygon;
+          std::vector<std::vector<Point>> polygon;
 
           std::vector<Point> polyline;
 
@@ -1737,7 +1737,7 @@ static bool exportGroupsToShape(shape_t *shape, const PrimGroup &prim_group,
             }
           }
 
-#else  // Built-in ear clipping triangulation
+#else // Built-in ear clipping triangulation
           vertex_index_t i0 = face.vertex_indices[0];
           vertex_index_t i1(-1);
           vertex_index_t i2 = face.vertex_indices[1];
@@ -1796,7 +1796,7 @@ static bool exportGroupsToShape(shape_t *shape, const PrimGroup &prim_group,
             }
           }
 
-          face_t remainingFace = face;  // copy
+          face_t remainingFace = face; // copy
           size_t guess_vert = 0;
           vertex_index_t ind[3];
           real_t vx[3];
@@ -1961,7 +1961,7 @@ static bool exportGroupsToShape(shape_t *shape, const PrimGroup &prim_group,
             }
           }
 #endif
-        }  // npolys
+        } // npolys
       } else {
         for (size_t k = 0; k < npolys; k++) {
           index_t idx;
@@ -1973,9 +1973,9 @@ static bool exportGroupsToShape(shape_t *shape, const PrimGroup &prim_group,
 
         shape->mesh.num_face_vertices.push_back(
             static_cast<unsigned int>(npolys));
-        shape->mesh.material_ids.push_back(material_id);  // per face
+        shape->mesh.material_ids.push_back(material_id); // per face
         shape->mesh.smoothing_group_ids.push_back(
-            face.smoothing_group_id);  // per face
+            face.smoothing_group_id); // per face
       }
     }
 
@@ -2116,9 +2116,11 @@ void LoadMtl(std::map<std::string, int> *material_map,
     token += strspn(token, " \t");
 
     assert(token);
-    if (token[0] == '\0') continue;  // empty line
+    if (token[0] == '\0')
+      continue; // empty line
 
-    if (token[0] == '#') continue;  // comment line
+    if (token[0] == '#')
+      continue; // comment line
 
     // new mtl
     if ((0 == strncmp(token, "newmtl", 6)) && IS_SPACE((token[6]))) {
@@ -2574,7 +2576,8 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
 #else
     const char dirsep = '\\';
 #endif
-    if (baseDir[baseDir.length() - 1] != dirsep) baseDir += dirsep;
+    if (baseDir[baseDir.length() - 1] != dirsep)
+      baseDir += dirsep;
   }
   MaterialFileReader matFileReader(baseDir);
 
@@ -2590,11 +2593,11 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
   std::stringstream errss;
 
   std::vector<real_t> v;
-  std::vector<real_t> vertex_weights;  // optional [w] component in `v`
+  std::vector<real_t> vertex_weights; // optional [w] component in `v`
   std::vector<real_t> vn;
   std::vector<real_t> vt;
   std::vector<real_t> vc;
-  std::vector<skin_weight_t> vw;  // tinyobj extension: vertex skin weights
+  std::vector<skin_weight_t> vw; // tinyobj extension: vertex skin weights
   std::vector<tag_t> tags;
   PrimGroup prim_group;
   std::string name;
@@ -2605,8 +2608,7 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
   int material = -1;
 
   // smoothing group id
-  unsigned int current_smoothing_id =
-      0;  // Initial value. 0 means no smoothing.
+  unsigned int current_smoothing_id = 0; // Initial value. 0 means no smoothing.
 
   int greatest_v_idx = -1;
   int greatest_vn_idx = -1;
@@ -2614,7 +2616,7 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
 
   shape_t shape;
 
-  bool found_all_colors = true;  // check if all 'v' line has color info
+  bool found_all_colors = true; // check if all 'v' line has color info
 
   size_t line_num = 0;
   std::string linebuf;
@@ -2643,9 +2645,11 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
     token += strspn(token, " \t");
 
     assert(token);
-    if (token[0] == '\0') continue;  // empty line
+    if (token[0] == '\0')
+      continue; // empty line
 
-    if (token[0] == '#') continue;  // comment line
+    if (token[0] == '#')
+      continue; // comment line
 
     // vertex
     if (token[0] == 'v' && IS_SPACE((token[1]))) {
@@ -2661,7 +2665,7 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
       v.push_back(z);
 
       vertex_weights.push_back(
-          r);  // r = w, and initialized to 1.0 when `w` component is not found.
+          r); // r = w, and initialized to 1.0 when `w` component is not found.
 
       if ((num_components == 6) || default_vcols_fallback) {
         vc.push_back(r);
@@ -2923,9 +2927,8 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
 
           if (!found) {
             if (warn) {
-              (*warn) +=
-                  "Failed to load material file(s). Use default "
-                  "material.\n";
+              (*warn) += "Failed to load material file(s). Use default "
+                         "material.\n";
             }
           }
         }
@@ -2939,7 +2942,7 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
       // flush previous face group.
       bool ret = exportGroupsToShape(&shape, prim_group, tags, material, name,
                                      triangulate, v, warn);
-      (void)ret;  // return value not used.
+      (void)ret; // return value not used.
 
       if (shape.mesh.indices.size() > 0) {
         shapes->push_back(shape);
@@ -2955,7 +2958,7 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
       while (!IS_NEW_LINE(token[0]) && token[0] != '#') {
         std::string str = parseString(&token);
         names.push_back(str);
-        token += strspn(token, " \t\r");  // skip tag
+        token += strspn(token, " \t\r"); // skip tag
       }
 
       // names[0] must be 'g'
@@ -2991,7 +2994,7 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
       // flush previous face group.
       bool ret = exportGroupsToShape(&shape, prim_group, tags, material, name,
                                      triangulate, v, warn);
-      (void)ret;  // return value not used.
+      (void)ret; // return value not used.
 
       if (shape.mesh.indices.size() > 0 || shape.lines.indices.size() > 0 ||
           shape.points.indices.size() > 0) {
@@ -3012,7 +3015,7 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
     }
 
     if (token[0] == 't' && IS_SPACE(token[1])) {
-      const int max_tag_nums = 8192;  // FIXME(syoyo): Parameterize.
+      const int max_tag_nums = 8192; // FIXME(syoyo): Parameterize.
       tag_t tag;
 
       token += 2;
@@ -3068,7 +3071,7 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
       token += 2;
 
       // skip space.
-      token += strspn(token, " \t");  // skip space
+      token += strspn(token, " \t"); // skip space
 
       if (token[0] == '\0') {
         continue;
@@ -3094,7 +3097,7 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
       }
 
       continue;
-    }  // smoothing group id
+    } // smoothing group id
 
     // Ignore unknown command.
   }
@@ -3135,10 +3138,10 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
   // we also add `shape` to `shapes` when `shape.mesh` has already some
   // faces(indices)
   if (ret || shape.mesh.indices
-                 .size()) {  // FIXME(syoyo): Support other prims(e.g. lines)
+                 .size()) { // FIXME(syoyo): Support other prims(e.g. lines)
     shapes->push_back(shape);
   }
-  prim_group.clear();  // for safety
+  prim_group.clear(); // for safety
 
   if (err) {
     (*err) += errss.str();
@@ -3165,7 +3168,7 @@ bool LoadObjWithCallback(std::istream &inStream, const callback_t &callback,
   // material
   std::set<std::string> material_filenames;
   std::map<std::string, int> material_map;
-  int material_id = -1;  // -1 = invalid
+  int material_id = -1; // -1 = invalid
 
   std::vector<index_t> indices;
   std::vector<material_t> materials;
@@ -3197,9 +3200,11 @@ bool LoadObjWithCallback(std::istream &inStream, const callback_t &callback,
     token += strspn(token, " \t");
 
     assert(token);
-    if (token[0] == '\0') continue;  // empty line
+    if (token[0] == '\0')
+      continue; // empty line
 
-    if (token[0] == '#') continue;  // comment line
+    if (token[0] == '#')
+      continue; // comment line
 
     // vertex
     if (token[0] == 'v' && IS_SPACE((token[1]))) {
@@ -3209,7 +3214,7 @@ bool LoadObjWithCallback(std::istream &inStream, const callback_t &callback,
 
       int num_components = parseVertexWithColor(&x, &y, &z, &r, &g, &b, &token);
       if (callback.vertex_cb) {
-        callback.vertex_cb(user_data, x, y, z, r);  // r=w is optional
+        callback.vertex_cb(user_data, x, y, z, r); // r=w is optional
       }
       if (callback.vertex_color_cb) {
         bool found_color = (num_components == 6);
@@ -3232,7 +3237,7 @@ bool LoadObjWithCallback(std::istream &inStream, const callback_t &callback,
     // texcoord
     if (token[0] == 'v' && token[1] == 't' && IS_SPACE((token[2]))) {
       token += 3;
-      real_t x, y, z;  // y and z are optional. default = 0.0
+      real_t x, y, z; // y and z are optional. default = 0.0
       parseReal3(&x, &y, &z, &token);
       if (callback.texcoord_cb) {
         callback.texcoord_cb(user_data, x, y, z);
@@ -3307,9 +3312,8 @@ bool LoadObjWithCallback(std::istream &inStream, const callback_t &callback,
 
         if (filenames.empty()) {
           if (warn) {
-            (*warn) +=
-                "Looks like empty filename for mtllib. Use default "
-                "material. \n";
+            (*warn) += "Looks like empty filename for mtllib. Use default "
+                       "material. \n";
           }
         } else {
           bool found = false;
@@ -3325,7 +3329,7 @@ bool LoadObjWithCallback(std::istream &inStream, const callback_t &callback,
                                    &material_map, &warn_mtl, &err_mtl);
 
             if (warn && (!warn_mtl.empty())) {
-              (*warn) += warn_mtl;  // This should be warn message.
+              (*warn) += warn_mtl; // This should be warn message.
             }
 
             if (err && (!err_mtl.empty())) {
@@ -3341,9 +3345,8 @@ bool LoadObjWithCallback(std::istream &inStream, const callback_t &callback,
 
           if (!found) {
             if (warn) {
-              (*warn) +=
-                  "Failed to load material file(s). Use default "
-                  "material.\n";
+              (*warn) += "Failed to load material file(s). Use default "
+                         "material.\n";
             }
           } else {
             if (callback.mtllib_cb) {
@@ -3364,7 +3367,7 @@ bool LoadObjWithCallback(std::istream &inStream, const callback_t &callback,
       while (!IS_NEW_LINE(token[0]) && token[0] != '#') {
         std::string str = parseString(&token);
         names.push_back(str);
-        token += strspn(token, " \t\r");  // skip tag
+        token += strspn(token, " \t\r"); // skip tag
       }
 
       assert(names.size() > 0);
@@ -3403,7 +3406,7 @@ bool LoadObjWithCallback(std::istream &inStream, const callback_t &callback,
       continue;
     }
 
-#if 0  // @todo
+#if 0 // @todo
     if (token[0] == 't' && IS_SPACE(token[1])) {
       tag_t tag;
 
@@ -3495,6 +3498,6 @@ bool ObjReader::ParseFromString(const std::string &obj_text,
 #ifdef __clang__
 #pragma clang diagnostic pop
 #endif
-}  // namespace tinyobj
+} // namespace tinyobj
 
 #endif
