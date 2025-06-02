@@ -14,8 +14,8 @@
 #include <sstream>
 #include <stdexcept>
 
-#include "backend.h"
-#include "core.h"
+#include "backend.hpp"
+#include "core.hpp"
 
 #define CUDA_CHECK(call)                                                       \
   do {                                                                         \

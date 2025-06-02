@@ -1,7 +1,7 @@
 #pragma once
 
-#include "backend.h"
-#include "core.h"
+#include "backend.hpp"
+#include "core.hpp"
 #include <array>
 
 namespace portableRT {

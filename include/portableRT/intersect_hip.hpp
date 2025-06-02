@@ -1,6 +1,6 @@
 #pragma once
-#include "backend.h"
-#include "core.h"
+#include "backend.hpp"
+#include "core.hpp"
 
 namespace portableRT {
 

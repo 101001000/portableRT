@@ -94,7 +94,7 @@ That's it, you're ready to go.
 ### Example
 
 ```cpp
-#include <portableRT/portableRT.h>
+#include <portableRT/portableRT.hpp>
 #include <iostream>
 
 int main() {

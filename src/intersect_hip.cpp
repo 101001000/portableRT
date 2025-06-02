@@ -1,5 +1,5 @@
-#include "../include/portableRT/intersect_hip.h"
-#include "../include/portableRT/core.h"
+#include "../include/portableRT/intersect_hip.hpp"
+#include "../include/portableRT/core.hpp"
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>

@@ -1,7 +1,7 @@
 #include <sycl/sycl.hpp>
 
-#include "../include/portableRT/core.h"
-#include "../include/portableRT/intersect_embree_sycl.h"
+#include "../include/portableRT/core.hpp"
+#include "../include/portableRT/intersect_embree_sycl.hpp"
 
 void enablePersistentJITCache() {
 #if defined(_WIN32)

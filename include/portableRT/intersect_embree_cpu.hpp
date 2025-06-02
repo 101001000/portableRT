@@ -4,7 +4,7 @@
 #include <math.h>
 #include <stdio.h>
 
-#include "core.h"
+#include "core.hpp"
 
 void errorFunctionCpu(void *userPtr, enum RTCError error, const char *str) {
   printf("error %d: %s\n", error, str);

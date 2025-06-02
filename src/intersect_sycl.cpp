@@ -1,5 +1,5 @@
-#include "../include/portableRT/intersect_sycl.h"
-#include "../include/portableRT/core.h"
+#include "../include/portableRT/intersect_sycl.hpp"
+#include "../include/portableRT/core.hpp"
 #include <sycl/sycl.hpp>
 
 namespace portableRT {

@@ -1,6 +1,6 @@
 #include <array>
 #include <iostream>
-#include <portableRT/portableRT.h>
+#include <portableRT/portableRT.hpp>
 
 int main() {
 
