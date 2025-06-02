@@ -88,9 +88,6 @@ cmake --build build
 
 That's it, you're ready to go.
 
-> **Note:** `intersect_tri()` uses a function pointer internally, which introduces one level of indirection.  
-> If you're targeting maximum performance, you can call the templatized version `intersect_tri<BackendType>()` directly.
-
 ### Example
 
 ```cpp
