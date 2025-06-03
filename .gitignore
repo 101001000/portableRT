@@ -3,3 +3,5 @@ cache
 *.sh
 .vscode
 *.json
+*.txt
+*.png
