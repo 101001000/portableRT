@@ -14,7 +14,7 @@ public:
   EmbreeSYCLBackend();
   ~EmbreeSYCLBackend();
 
-  bool intersect_tri(const std::array<float, 9> &vertices, const Ray &ray);
+  bool intersect_tris(const Tris &tris, const Ray &ray);
   bool is_available() const override;
   void init() override;
   void shutdown() override;

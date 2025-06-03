@@ -180,9 +180,10 @@ void EmbreeSYCLBackend::initializeScene() {
   rtcCommitScene(m_rtcscene);
 }
 
-bool EmbreeSYCLBackend::intersect_tri(const std::array<float, 9> &tri,
-                                      const Ray &ray) {
+bool EmbreeSYCLBackend::intersect_tris(const Tris &tris, const Ray &ray) {
   try {
+
+    std::array<float, 9> tri = tris[0];
 
     float *vertices =
         (float *)rtcGetGeometryBufferData(m_tri, RTC_BUFFER_TYPE_VERTEX, 0);
@@ -227,8 +228,7 @@ bool EmbreeSYCLBackend::is_available() const {
   }
 }
 
-EmbreeSYCLBackend::EmbreeSYCLBackend()
-    : InvokableBackend("Embree SYCL") {
+EmbreeSYCLBackend::EmbreeSYCLBackend() : InvokableBackend("Embree SYCL") {
   static RegisterBackend reg(*this);
 }
 

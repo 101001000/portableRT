@@ -241,8 +241,9 @@ void OptiXBackend::shutdown() {
   OPTIX_CHECK(optixDeviceContextDestroy(m_context));
 }
 
-bool OptiXBackend::intersect_tri(const std::array<float, 9> &v,
-                                 const Ray &ray) {
+bool OptiXBackend::intersect_tris(const Tris &tris, const Ray &ray) {
+
+  std::array<float, 9> v = tris[0];
 
   OptixTraversableHandle gas_handle;
   CUdeviceptr d_gas_output_buffer;

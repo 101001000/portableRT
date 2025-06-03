@@ -23,9 +23,10 @@ void SYCLBackend::init() {
 
 void SYCLBackend::shutdown() { m_impl.reset(); }
 
-bool SYCLBackend::intersect_tri(const std::array<float, 9> &v, const Ray &ray) {
+bool SYCLBackend::intersect_tris(const Tris &tris, const Ray &ray) {
   try {
 
+    std::array<float, 9> v = tris[0];
     bool *res = sycl::malloc_shared<bool>(1, m_impl->m_q);
 
     m_impl->m_q

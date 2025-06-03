@@ -17,8 +17,8 @@ int main() {
   for (auto backend : portableRT::available_backends()) {
     std::cout << "Testing " << backend->name() << std::endl;
     portableRT::select_backend(backend);
-    bool hit1 = portableRT::intersect_tri(vertices, hit_ray);
-    bool hit2 = portableRT::intersect_tri(vertices, miss_ray);
+    bool hit1 = portableRT::intersect_tris({vertices}, hit_ray);
+    bool hit2 = portableRT::intersect_tris({vertices}, miss_ray);
     std::cout << "Ray 1: " << hit1 << "\nRay 2: " << hit2 << std::endl;
   }
 

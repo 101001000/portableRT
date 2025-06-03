@@ -1,7 +1,7 @@
-#include <embree4/rtcore.h>
-#include <limits>
 #include <cmath>
 #include <cstdio>
+#include <embree4/rtcore.h>
+#include <limits>
 
 #include "../include/portableRT/intersect_embree_cpu.hpp"
 
@@ -76,8 +76,9 @@ void EmbreeCPUBackend::initializeScene() {
   rtcCommitScene(m_scene);
 }
 
-bool EmbreeCPUBackend::intersect_tri(const std::array<float, 9> &tri,
-                                     const Ray &ray) {
+bool EmbreeCPUBackend::intersect_tris(const Tris &tris, const Ray &ray) {
+
+  std::array<float, 9> tri = tris[0];
 
   float *vertices =
       (float *)rtcGetGeometryBufferData(m_tri, RTC_BUFFER_TYPE_VERTEX, 0);

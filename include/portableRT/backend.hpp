@@ -8,19 +8,17 @@
 
 namespace portableRT {
 
-using IntersectDispatchFn = bool (*)(void *, const std::array<float, 9> &,
-                                     const Ray &);
+using IntersectDispatchFn = bool (*)(void *, const Tris &tris, const Ray &);
 
 class Backend {
 public:
-  Backend(std::string name, void *self_ptr,
-          IntersectDispatchFn fn)
+  Backend(std::string name, void *self_ptr, IntersectDispatchFn fn)
       : name_{std::move(name)}, self_{self_ptr}, intersect_{fn} {}
 
   const std::string &name() const { return name_; }
 
-  bool intersect_tri(const std::array<float, 9> &tri, const Ray &r) {
-    return intersect_(self_, tri, r);
+  bool intersect_tris(const Tris &tris, const Ray &r) {
+    return intersect_(self_, tris, r);
   }
 
   virtual bool is_available() const = 0;
@@ -43,9 +41,8 @@ protected:
   ~InvokableBackend() = default;
 
 private:
-  static bool dispatch(void *self, const std::array<float, 9> &tri,
-                       const Ray &r) {
-    return static_cast<Derived *>(self)->intersect_tri(tri, r);
+  static bool dispatch(void *self, const Tris &tris, const Ray &r) {
+    return static_cast<Derived *>(self)->intersect_tris(tris, r);
   }
 };
 
@@ -60,10 +57,10 @@ inline const std::vector<Backend *> &available_backends() {
   return available_backends_;
 }
 
-inline IntersectDispatchFn intersect_tri_call = nullptr;
+inline IntersectDispatchFn intersect_tris_call = nullptr;
 
-inline bool intersect_tri(const std::array<float, 9> &v, const Ray &r) {
-  return intersect_tri_call(selected_backend->self_, v, r);
+inline bool intersect_tris(const Tris &tris, const Ray &r) {
+  return intersect_tris_call(selected_backend->self_, tris, r);
 }
 
 inline void select_backend(Backend *backend) {
@@ -71,7 +68,7 @@ inline void select_backend(Backend *backend) {
     selected_backend->shutdown();
   selected_backend = backend;
   backend->init();
-  intersect_tri_call = backend->intersect_;
+  intersect_tris_call = backend->intersect_;
 }
 
 struct RegisterBackend {

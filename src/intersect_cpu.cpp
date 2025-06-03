@@ -3,8 +3,10 @@
 
 namespace portableRT {
 
-bool CPUBackend::intersect_tri(const std::array<float, 9> &vertices,
-                               const Ray &ray) {
+bool CPUBackend::intersect_tris(const Tris &tris, const Ray &ray) {
+
+  std::array<float, 9> vertices = tris[0];
+
   std::array<float, 3> v0 = {vertices[0], vertices[1], vertices[2]};
   std::array<float, 3> v1 = {vertices[3], vertices[4], vertices[5]};
   std::array<float, 3> v2 = {vertices[6], vertices[7], vertices[8]};
