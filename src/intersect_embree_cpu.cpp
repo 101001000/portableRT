@@ -43,54 +43,34 @@ bool castRay(RTCScene scene, float ox, float oy, float oz, float dx, float dy,
 
 namespace portableRT {
 
-void EmbreeCPUBackend::initializeScene() {
-
-  rtcSetSceneFlags(m_scene, RTC_SCENE_FLAG_DYNAMIC);
-  m_tri = rtcNewGeometry(m_device, RTC_GEOMETRY_TYPE_TRIANGLE);
-
-  float *vertices =
-      (float *)rtcSetNewGeometryBuffer(m_tri, RTC_BUFFER_TYPE_VERTEX, 0,
-                                       RTC_FORMAT_FLOAT3, 3 * sizeof(float), 3);
-
-  unsigned *indices = (unsigned *)rtcSetNewGeometryBuffer(
-      m_tri, RTC_BUFFER_TYPE_INDEX, 0, RTC_FORMAT_UINT3, 3 * sizeof(unsigned),
-      1);
-
-  if (vertices && indices) {
-    vertices[0] = 0;
-    vertices[1] = 0;
-    vertices[2] = 0;
-    vertices[3] = 0;
-    vertices[4] = 0;
-    vertices[5] = 0;
-    vertices[6] = 0;
-    vertices[7] = 0;
-    vertices[8] = 0;
-
-    indices[0] = 0;
-    indices[1] = 1;
-    indices[2] = 2;
-  }
-  rtcCommitGeometry(m_tri);
-  rtcAttachGeometry(m_scene, m_tri);
-  rtcCommitScene(m_scene);
-}
-
 bool EmbreeCPUBackend::intersect_tris(const Tris &tris, const Ray &ray) {
 
-  std::array<float, 9> tri = tris[0];
+  m_tri = rtcNewGeometry(m_device, RTC_GEOMETRY_TYPE_TRIANGLE);
 
-  float *vertices =
-      (float *)rtcGetGeometryBufferData(m_tri, RTC_BUFFER_TYPE_VERTEX, 0);
-  for (int i = 0; i < 9; i++) {
-    vertices[i] = tri[i];
+  float *vertices = (float *)rtcSetNewGeometryBuffer(
+      m_tri, RTC_BUFFER_TYPE_VERTEX, 0, RTC_FORMAT_FLOAT3, sizeof(float) * 3,
+      tris.size() * 3);
+
+  unsigned *indices = (unsigned *)rtcSetNewGeometryBuffer(
+      m_tri, RTC_BUFFER_TYPE_INDEX, 0, RTC_FORMAT_UINT3, sizeof(unsigned) * 3,
+      tris.size());
+
+  for (int i = 0; i < tris.size(); ++i) {
+    for (int j = 0; j < 3; ++j)
+      indices[i * 3 + j] = i * 3 + j;
+    for (int j = 0; j < 9; ++j)
+      vertices[i * 9 + j] = tris[i][j];
   }
+
   rtcCommitGeometry(m_tri);
+  auto geom_id = rtcAttachGeometry(m_scene, m_tri);
   rtcCommitScene(m_scene);
 
   bool res = castRay(m_scene, ray.origin[0], ray.origin[1], ray.origin[2],
                      ray.direction[0], ray.direction[1], ray.direction[2]);
 
+  rtcDetachGeometry(m_scene, geom_id);
+  rtcReleaseGeometry(m_tri);
   return res;
 }
 
@@ -111,11 +91,9 @@ bool EmbreeCPUBackend::is_available() const {
 void EmbreeCPUBackend::init() {
   m_device = initializeDevice();
   m_scene = rtcNewScene(m_device);
-  initializeScene();
 }
 
 void EmbreeCPUBackend::shutdown() {
-  rtcReleaseGeometry(m_tri);
   rtcReleaseScene(m_scene);
   rtcReleaseDevice(m_device);
 }

@@ -126,7 +126,7 @@ int main() {
       ray.direction[1] /= length;
       ray.direction[2] /= length;
 
-      bool hit = portableRT::intersect_tris(tris, ray);;
+      bool hit = portableRT::intersect_tris(tris, ray);
 
       image[width * y + x] = static_cast<unsigned char>(hit * 255.0f);
     }

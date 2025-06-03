@@ -243,7 +243,7 @@ void OptiXBackend::shutdown() {
 
 bool OptiXBackend::intersect_tris(const Tris &tris, const Ray &ray) {
 
-  std::array<float, 9> v = tris[0];
+  // std::array<float, 9> v = tris[0];
 
   OptixTraversableHandle gas_handle;
   CUdeviceptr d_gas_output_buffer;
@@ -256,11 +256,11 @@ bool OptiXBackend::intersect_tris(const Tris &tris, const Ray &ray) {
 
     // Triangle build input: simple list of three vertices
 
-    const size_t vertices_size = sizeof(float) * v.size();
+    const size_t vertices_size = sizeof(float) * tris.size() * 9;
     CUdeviceptr d_vertices = 0;
     CUDA_CHECK(
         cudaMalloc(reinterpret_cast<void **>(&d_vertices), vertices_size));
-    CUDA_CHECK(cudaMemcpy(reinterpret_cast<void *>(d_vertices), v.data(),
+    CUDA_CHECK(cudaMemcpy(reinterpret_cast<void *>(d_vertices), tris.data(),
                           vertices_size, cudaMemcpyHostToDevice));
 
     // Our build input is a simple list of non-indexed triangle vertices
@@ -269,7 +269,8 @@ bool OptiXBackend::intersect_tris(const Tris &tris, const Ray &ray) {
     triangle_input.type = OPTIX_BUILD_INPUT_TYPE_TRIANGLES;
     triangle_input.triangleArray.vertexFormat = OPTIX_VERTEX_FORMAT_FLOAT3;
     triangle_input.triangleArray.vertexStrideInBytes = sizeof(float3);
-    triangle_input.triangleArray.numVertices = 3;
+    triangle_input.triangleArray.numVertices =
+        static_cast<uint32_t>(tris.size() * 3);
     triangle_input.triangleArray.vertexBuffers = &d_vertices;
     triangle_input.triangleArray.flags = triangle_input_flags;
     triangle_input.triangleArray.numSbtRecords = 1;

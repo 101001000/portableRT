@@ -110,42 +110,49 @@ namespace portableRT {
 
 bool HIPBackend::intersect_tris(const Tris &tris, const Ray &ray) {
 
-  std::array<float, 9> v = tris[0];
+  for (int i = 0; i < tris.size(); ++i) {
+    std::array<float, 9> v = tris[i];
 
-  float3 min_b;
-  min_b.x = std::min(v[0], std::min(v[3], v[6]));
-  min_b.y = std::min(v[1], std::min(v[4], v[7]));
-  min_b.z = std::min(v[2], std::min(v[5], v[8]));
+    float3 min_b;
+    min_b.x = std::min(v[0], std::min(v[3], v[6]));
+    min_b.y = std::min(v[1], std::min(v[4], v[7]));
+    min_b.z = std::min(v[2], std::min(v[5], v[8]));
 
-  float3 max_b;
-  max_b.x = std::max(v[0], std::max(v[3], v[6]));
-  max_b.y = std::max(v[1], std::max(v[4], v[7]));
-  max_b.z = std::max(v[2], std::max(v[5], v[8]));
+    float3 max_b;
+    max_b.x = std::max(v[0], std::max(v[3], v[6]));
+    max_b.y = std::max(v[1], std::max(v[4], v[7]));
+    max_b.z = std::max(v[2], std::max(v[5], v[8]));
 
-  TriangleNode leaf{};
+    TriangleNode leaf{};
 
-  leaf.m_triPair.m_v0 = {v[0], v[1], v[2]};
-  leaf.m_triPair.m_v1 = {v[3], v[4], v[5]};
-  leaf.m_triPair.m_v2 = {v[6], v[7], v[8]};
+    leaf.m_triPair.m_v0 = {v[0], v[1], v[2]};
+    leaf.m_triPair.m_v1 = {v[3], v[4], v[5]};
+    leaf.m_triPair.m_v2 = {v[6], v[7], v[8]};
 
-  leaf.m_flags = (2 << 2) | (1 << 0);
+    leaf.m_flags = (2 << 2) | (1 << 0);
 
-  // TODO: free missing
-  void *d_bvh;
-  CHK(hipMalloc(&d_bvh, sizeof(TriangleNode)));
-  CHK(hipMemcpy(d_bvh, &leaf, sizeof(TriangleNode), hipMemcpyHostToDevice));
+    void *d_bvh;
+    CHK(hipMalloc(&d_bvh, sizeof(TriangleNode)));
+    CHK(hipMemcpy(d_bvh, &leaf, sizeof(TriangleNode), hipMemcpyHostToDevice));
 
-  uint4 *dHit;
-  CHK(hipMalloc(&dHit, sizeof(uint4)));
+    uint4 *dHit;
+    CHK(hipMalloc(&dHit, sizeof(uint4)));
 
-  kernel<<<1, 1>>>(d_bvh, dHit,
-                   {ray.origin[0], ray.origin[1], ray.origin[2], 0},
-                   {ray.direction[0], ray.direction[1], ray.direction[2], 0});
-  CHK(hipDeviceSynchronize());
-  uint4 hv;
-  CHK(hipMemcpy(&hv, dHit, sizeof(uint4), hipMemcpyDeviceToHost));
+    kernel<<<1, 1>>>(d_bvh, dHit,
+                     {ray.origin[0], ray.origin[1], ray.origin[2], 0},
+                     {ray.direction[0], ray.direction[1], ray.direction[2], 0});
+    CHK(hipDeviceSynchronize());
+    uint4 hv;
+    CHK(hipMemcpy(&hv, dHit, sizeof(uint4), hipMemcpyDeviceToHost));
 
-  return hv.w;
+    CHK(hipFree(d_bvh));
+    CHK(hipFree(dHit));
+
+    if (hv.w)
+      return true;
+  }
+
+  return false;
 }
 
 void HIPBackend::init() {}
