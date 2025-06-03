@@ -1,7 +1,7 @@
 #include <embree4/rtcore.h>
 #include <limits>
-#include <math.h>
-#include <stdio.h>
+#include <cmath>
+#include <cstdio>
 
 #include "../include/portableRT/intersect_embree_cpu.hpp"
 
@@ -10,12 +10,12 @@ void errorFunctionCpu(void *userPtr, enum RTCError error, const char *str) {
 }
 
 RTCDevice initializeDevice() {
-  RTCDevice device = rtcNewDevice(NULL);
+  RTCDevice device = rtcNewDevice(nullptr);
 
   if (!device)
-    printf("error %d: cannot create device\n", rtcGetDeviceError(NULL));
+    printf("error %d: cannot create device\n", rtcGetDeviceError(nullptr));
 
-  rtcSetDeviceErrorFunction(device, errorFunctionCpu, NULL);
+  rtcSetDeviceErrorFunction(device, errorFunctionCpu, nullptr);
   return device;
 }
 

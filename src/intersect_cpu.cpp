@@ -1,5 +1,3 @@
-#pragma once
-
 #include "../include/portableRT/intersect_cpu.hpp"
 #include <array>
 
