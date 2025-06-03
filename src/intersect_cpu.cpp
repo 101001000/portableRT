@@ -48,8 +48,8 @@ bool intersect_tri(const std::array<float, 9> &vertices, const Ray &ray) {
   return t > 0.0f;
 }
 
-bool CPUBackend::intersect_tris(const Tris &tris, const Ray &ray) {
-  for (const auto &tri : tris) {
+bool CPUBackend::intersect_tris(const Ray &ray) {
+  for (const auto &tri : m_tris) {
     if (intersect_tri(tri, ray))
       return true;
   }
@@ -57,8 +57,8 @@ bool CPUBackend::intersect_tris(const Tris &tris, const Ray &ray) {
 }
 
 bool CPUBackend::is_available() const { return true; }
-
 void CPUBackend::init() {}
 void CPUBackend::shutdown() {}
+void CPUBackend::set_tris(const Tris &tris) { m_tris = tris; }
 
 } // namespace portableRT

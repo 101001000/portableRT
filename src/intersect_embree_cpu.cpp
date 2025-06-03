@@ -43,7 +43,12 @@ bool castRay(RTCScene scene, float ox, float oy, float oz, float dx, float dy,
 
 namespace portableRT {
 
-bool EmbreeCPUBackend::intersect_tris(const Tris &tris, const Ray &ray) {
+void EmbreeCPUBackend::set_tris(const Tris &tris) {
+
+  if (m_geom_id != static_cast<uint>(-1)) {
+    rtcDetachGeometry(m_scene, m_geom_id);
+    rtcReleaseGeometry(m_tri);
+  }
 
   m_tri = rtcNewGeometry(m_device, RTC_GEOMETRY_TYPE_TRIANGLE);
 
@@ -63,14 +68,14 @@ bool EmbreeCPUBackend::intersect_tris(const Tris &tris, const Ray &ray) {
   }
 
   rtcCommitGeometry(m_tri);
-  auto geom_id = rtcAttachGeometry(m_scene, m_tri);
+  m_geom_id = rtcAttachGeometry(m_scene, m_tri);
   rtcCommitScene(m_scene);
+}
 
+bool EmbreeCPUBackend::intersect_tris(const Ray &ray) {
   bool res = castRay(m_scene, ray.origin[0], ray.origin[1], ray.origin[2],
                      ray.direction[0], ray.direction[1], ray.direction[2]);
 
-  rtcDetachGeometry(m_scene, geom_id);
-  rtcReleaseGeometry(m_tri);
   return res;
 }
 

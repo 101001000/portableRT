@@ -99,6 +99,15 @@ int main() {
 
   std::vector<unsigned char> image(width * height);
 
+  auto bvh_start = std::chrono::high_resolution_clock::now();
+  portableRT::selected_backend->set_tris(tris);
+  auto bvh_end = std::chrono::high_resolution_clock::now();
+  auto bvh_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+      bvh_end - bvh_start);
+
+  std::cout << "BVH building time: " << bvh_duration.count() << " ms"
+            << std::endl;
+
   auto start = std::chrono::high_resolution_clock::now();
 
   for (int y = 0; y < height; ++y) {
@@ -126,7 +135,7 @@ int main() {
       ray.direction[1] /= length;
       ray.direction[2] /= length;
 
-      bool hit = portableRT::intersect_tris(tris, ray);
+      bool hit = portableRT::intersect_tris(ray);
 
       image[width * y + x] = static_cast<unsigned char>(hit * 255.0f);
     }

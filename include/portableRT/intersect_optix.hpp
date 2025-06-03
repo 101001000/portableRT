@@ -12,10 +12,11 @@ public:
     static RegisterBackend reg(*this);
   }
 
-  bool intersect_tris(const Tris &tris, const Ray &ray);
+  bool intersect_tris(const Ray &ray);
   bool is_available() const override;
   void init() override;
   void shutdown() override;
+  void set_tris(const Tris &tris) override;
 
 private:
   OptixDeviceContext m_context;
@@ -30,6 +31,7 @@ private:
   OptixProgramGroup m_hitgroup_prog_group = nullptr;
   CUstream m_stream;
   CUdeviceptr m_d_res;
+  OptixTraversableHandle m_gas_handle;
 };
 
 static OptiXBackend optix_backend;

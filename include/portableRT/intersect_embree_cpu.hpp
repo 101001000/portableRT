@@ -13,15 +13,17 @@ public:
 
   void initializeScene();
 
-  bool intersect_tris(const Tris &tris, const Ray &ray);
+  bool intersect_tris(const Ray &ray);
   bool is_available() const override;
   void init() override;
   void shutdown() override;
+  void set_tris(const Tris &tris) override;
 
 private:
   RTCDevice m_device;
   RTCScene m_scene;
   RTCGeometry m_tri;
+  unsigned int m_geom_id = RTC_INVALID_GEOMETRY_ID;
 };
 
 static EmbreeCPUBackend embreecpu_backend;

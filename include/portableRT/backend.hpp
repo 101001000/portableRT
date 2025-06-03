@@ -8,7 +8,7 @@
 
 namespace portableRT {
 
-using IntersectDispatchFn = bool (*)(void *, const Tris &tris, const Ray &);
+using IntersectDispatchFn = bool (*)(void *, const Ray &);
 
 class Backend {
 public:
@@ -17,10 +17,13 @@ public:
 
   const std::string &name() const { return name_; }
 
-  bool intersect_tris(const Tris &tris, const Ray &r) {
-    return intersect_(self_, tris, r);
-  }
+  bool intersect_tris(const Ray &r) { return intersect_(self_, r); }
 
+  // TODO make pure virtual
+  // TODO make move version
+  inline virtual void set_tris(const Tris &tris) {
+    std::cout << "unimplemented feature" << std::endl;
+  }
   virtual bool is_available() const = 0;
   virtual void init() = 0;
   virtual void shutdown() = 0;
@@ -41,8 +44,8 @@ protected:
   ~InvokableBackend() = default;
 
 private:
-  static bool dispatch(void *self, const Tris &tris, const Ray &r) {
-    return static_cast<Derived *>(self)->intersect_tris(tris, r);
+  static bool dispatch(void *self, const Ray &r) {
+    return static_cast<Derived *>(self)->intersect_tris(r);
   }
 };
 
@@ -59,8 +62,8 @@ inline const std::vector<Backend *> &available_backends() {
 
 inline IntersectDispatchFn intersect_tris_call = nullptr;
 
-inline bool intersect_tris(const Tris &tris, const Ray &r) {
-  return intersect_tris_call(selected_backend->self_, tris, r);
+inline bool intersect_tris(const Ray &r) {
+  return intersect_tris_call(selected_backend->self_, r);
 }
 
 inline void select_backend(Backend *backend) {

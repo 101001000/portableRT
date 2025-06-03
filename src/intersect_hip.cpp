@@ -108,10 +108,12 @@ __global__ void kernel(void *bvh, uint4 *out, float4 ray_o, float4 ray_d) {
 
 namespace portableRT {
 
-bool HIPBackend::intersect_tris(const Tris &tris, const Ray &ray) {
+void HIPBackend::set_tris(const Tris &tris) { m_tris = tris; }
 
-  for (int i = 0; i < tris.size(); ++i) {
-    std::array<float, 9> v = tris[i];
+bool HIPBackend::intersect_tris(const Ray &ray) {
+
+  for (int i = 0; i < m_tris.size(); ++i) {
+    std::array<float, 9> v = m_tris[i];
 
     float3 min_b;
     min_b.x = std::min(v[0], std::min(v[3], v[6]));

@@ -142,57 +142,48 @@ struct EmbreeSYCLBackendImpl {
   sycl::context m_context;
 };
 
-void EmbreeSYCLBackend::initializeScene() {
-  m_tri = rtcNewGeometry(m_rtcdevice, RTC_GEOMETRY_TYPE_TRIANGLE);
-
-  float *vertices =
-      alignedSYCLMallocDeviceReadWrite<float>(m_impl->m_q, 3 * 3, 16);
-
-  rtcSetSharedGeometryBuffer(m_tri, RTC_BUFFER_TYPE_VERTEX, 0,
-                             RTC_FORMAT_FLOAT3, vertices, 0, 3 * sizeof(float),
-                             3);
-
-  unsigned *indices =
-      alignedSYCLMallocDeviceReadOnly<unsigned>(m_impl->m_q, 3, 16);
-
-  rtcSetSharedGeometryBuffer(m_tri, RTC_BUFFER_TYPE_INDEX, 0, RTC_FORMAT_UINT3,
-                             indices, 0, 3 * sizeof(unsigned), 1);
-
-  if (vertices && indices) {
-    vertices[0] = 0;
-    vertices[1] = 0;
-    vertices[2] = 0;
-    vertices[3] = 0;
-    vertices[4] = 0;
-    vertices[5] = 0;
-    vertices[6] = 0;
-    vertices[7] = 0;
-    vertices[8] = 0;
-
-    indices[0] = 0;
-    indices[1] = 1;
-    indices[2] = 2;
+void EmbreeSYCLBackend::set_tris(const Tris &tris) {
+  if (m_geom_id != RTC_INVALID_GEOMETRY_ID) {
+    rtcDetachGeometry(m_rtcscene, m_geom_id);
+    rtcReleaseGeometry(m_tri);
+    // TODO: Fix leaking
+    // alignedSYCLFree(m_impl->m_q, m_vertices);
+    // alignedSYCLFree(m_impl->m_q, m_indices);
+    m_geom_id = RTC_INVALID_GEOMETRY_ID;
   }
 
-  rtcCommitGeometry(m_tri);
+  const std::size_t nTris = tris.size();
+  const std::size_t nVerts = nTris * 3;
 
-  rtcAttachGeometry(m_rtcscene, m_tri);
+  m_tri = rtcNewGeometry(m_rtcdevice, RTC_GEOMETRY_TYPE_TRIANGLE);
+  float *vertices =
+      alignedSYCLMallocDeviceReadWrite<float>(m_impl->m_q, nVerts * 3, 64);
+  unsigned int *indices =
+      alignedSYCLMallocDeviceReadOnly<unsigned>(m_impl->m_q, nTris * 3, 64);
+
+  for (std::size_t i = 0; i < nTris; ++i) {
+    std::memcpy(vertices + i * 9, tris[i].data(), 9 * sizeof(float));
+    indices[i * 3 + 0] = static_cast<unsigned>(i * 3 + 0);
+    indices[i * 3 + 1] = static_cast<unsigned>(i * 3 + 1);
+    indices[i * 3 + 2] = static_cast<unsigned>(i * 3 + 2);
+  }
+
+  rtcSetSharedGeometryBuffer(m_tri, RTC_BUFFER_TYPE_VERTEX, 0,
+                             RTC_FORMAT_FLOAT3, vertices, 0, sizeof(float) * 3,
+                             nVerts);
+
+  rtcSetSharedGeometryBuffer(m_tri, RTC_BUFFER_TYPE_INDEX, 0, RTC_FORMAT_UINT3,
+                             indices, 0, sizeof(unsigned) * 3, nTris);
+
+  rtcCommitGeometry(m_tri);
+  m_geom_id = rtcAttachGeometry(m_rtcscene, m_tri);
   rtcCommitScene(m_rtcscene);
+
+  m_rtctraversable = rtcGetSceneTraversable(m_rtcscene);
 }
 
-bool EmbreeSYCLBackend::intersect_tris(const Tris &tris, const Ray &ray) {
+bool EmbreeSYCLBackend::intersect_tris(const Ray &ray) {
   try {
-
-    std::array<float, 9> tri = tris[0];
-
-    float *vertices =
-        (float *)rtcGetGeometryBufferData(m_tri, RTC_BUFFER_TYPE_VERTEX, 0);
-    for (int i = 0; i < 9; i++) {
-      vertices[i] = tri[i];
-    }
-    rtcCommitGeometry(m_tri);
-    rtcCommitScene(m_rtcscene);
-    m_rtctraversable = rtcGetSceneTraversable(m_rtcscene);
 
     Result *result =
         alignedSYCLMallocDeviceReadWrite<Result>(m_impl->m_q, 1, 16);
@@ -246,8 +237,6 @@ void EmbreeSYCLBackend::init() {
 
   m_rtcdevice = initializeDevice(m_impl->m_context, m_impl->m_dev);
   m_rtcscene = rtcNewScene(m_rtcdevice);
-  initializeScene();
-  m_rtctraversable = rtcGetSceneTraversable(m_rtcscene);
 }
 
 void EmbreeSYCLBackend::shutdown() {

@@ -14,14 +14,13 @@ public:
   EmbreeSYCLBackend();
   ~EmbreeSYCLBackend();
 
-  bool intersect_tris(const Tris &tris, const Ray &ray);
+  bool intersect_tris(const Ray &ray);
   bool is_available() const override;
   void init() override;
   void shutdown() override;
+  void set_tris(const Tris &tris) override;
 
 private:
-  void initializeScene();
-
   // Ugly solution to overcome the issues with forward declarations of the sycl
   // type alias in the intel implementation I need to move the sycl import to
   // the .cpp instead the .h so the hip compiler ignores the sycl headers. Other
@@ -32,6 +31,7 @@ private:
   RTCScene m_rtcscene;
   RTCTraversable m_rtctraversable;
   RTCGeometry m_tri;
+  unsigned int m_geom_id = RTC_INVALID_GEOMETRY_ID;
 };
 
 static EmbreeSYCLBackend embreesycl_backend;

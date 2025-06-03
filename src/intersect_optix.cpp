@@ -241,11 +241,7 @@ void OptiXBackend::shutdown() {
   OPTIX_CHECK(optixDeviceContextDestroy(m_context));
 }
 
-bool OptiXBackend::intersect_tris(const Tris &tris, const Ray &ray) {
-
-  // std::array<float, 9> v = tris[0];
-
-  OptixTraversableHandle gas_handle;
+void OptiXBackend::set_tris(const Tris &tris) {
   CUdeviceptr d_gas_output_buffer;
   {
     // Use default options for simplicity.  In a real use case we would want
@@ -292,7 +288,7 @@ bool OptiXBackend::intersect_tris(const Tris &tris, const Ray &ray) {
         &accel_options, &triangle_input,
         1, // num build inputs
         d_temp_buffer_gas, gas_buffer_sizes.tempSizeInBytes,
-        d_gas_output_buffer, gas_buffer_sizes.outputSizeInBytes, &gas_handle,
+        d_gas_output_buffer, gas_buffer_sizes.outputSizeInBytes, &m_gas_handle,
         nullptr, // emitted property list
         0        // num emitted properties
         ));
@@ -303,11 +299,16 @@ bool OptiXBackend::intersect_tris(const Tris &tris, const Ray &ray) {
     CUDA_CHECK(cudaFree(reinterpret_cast<void *>(d_vertices)));
   }
 
+  { CUDA_CHECK(cudaFree(reinterpret_cast<void *>(d_gas_output_buffer))); }
+}
+
+bool OptiXBackend::intersect_tris(const Ray &ray) {
+
   int h_res = 0;
   {
 
     Params params;
-    params.handle = gas_handle;
+    params.handle = m_gas_handle;
     params.origin = toFloat3(ray.origin);
     params.direction = toFloat3(ray.direction);
     params.result = reinterpret_cast<int *>(m_d_res);
@@ -326,8 +327,6 @@ bool OptiXBackend::intersect_tris(const Tris &tris, const Ray &ray) {
     CUDA_CHECK(cudaMemcpy(&h_res, (void *)m_d_res, sizeof(int),
                           cudaMemcpyDeviceToHost));
   }
-
-  { CUDA_CHECK(cudaFree(reinterpret_cast<void *>(d_gas_output_buffer))); }
 
   return h_res;
 }

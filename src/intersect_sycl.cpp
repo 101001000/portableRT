@@ -21,13 +21,15 @@ void SYCLBackend::init() {
   m_impl->m_q = sycl::queue(m_impl->m_dev);
 }
 
+void SYCLBackend::set_tris(const Tris &tris) { m_tris = tris; }
+
 void SYCLBackend::shutdown() { m_impl.reset(); }
 
-bool SYCLBackend::intersect_tris(const Tris &tris, const Ray &ray) {
+bool SYCLBackend::intersect_tris(const Ray &ray) {
   try {
 
-    for (int i = 0; i < tris.size(); ++i) {
-      std::array<float, 9> v = tris[i];
+    for (int i = 0; i < m_tris.size(); ++i) {
+      std::array<float, 9> v = m_tris[i];
       bool *res = sycl::malloc_shared<bool>(1, m_impl->m_q);
 
       m_impl->m_q

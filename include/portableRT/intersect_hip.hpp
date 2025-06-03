@@ -8,10 +8,14 @@ class HIPBackend : public InvokableBackend<HIPBackend> {
 public:
   HIPBackend() : InvokableBackend("HIP") { static RegisterBackend reg(*this); }
 
-  bool intersect_tris(const Tris &tris, const Ray &ray);
+  bool intersect_tris(const Ray &ray);
   bool is_available() const override;
   void init() override;
   void shutdown() override;
+  void set_tris(const Tris &tris) override;
+
+private:
+  Tris m_tris;
 };
 
 static HIPBackend hip_backend;
