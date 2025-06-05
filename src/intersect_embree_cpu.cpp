@@ -1,6 +1,5 @@
 #include <cmath>
 #include <cstdio>
-#include <embree4/rtcore.h>
 #include <limits>
 
 #include "../include/portableRT/intersect_embree_cpu.hpp"

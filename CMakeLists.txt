@@ -8,7 +8,7 @@ option(USE_EMBREE_CPU "Enable Embree CPU backend" OFF)
 option(USE_SYCL "Enable SYCL backend" OFF)
 
 # All the files that don't require an specific compiler
-add_library(portableRT src/portableRT.cpp src/intersect_cpu.cpp src/intersect_embree_cpu.cpp src/intersect_optix.cpp src/bvh.cpp)
+add_library(portableRT src/portableRT.cpp src/intersect_cpu.cpp src/bvh.cpp)
 
 # OPTIX
 if(USE_OPTIX)
@@ -52,6 +52,8 @@ if(USE_OPTIX)
 
     add_custom_target(compile_shaders ALL DEPENDS ${PTX_FILES})
     add_dependencies(portableRT compile_shaders)
+
+    add_library(portableRT src/intersect_optix.cpp)
 else()
     message(STATUS "Building without OptiX")
 endif()
@@ -73,7 +75,6 @@ if(USE_HIP)
     enable_language(HIP)
 
     set_property(TARGET portableRT PROPERTY HIP_ARCHITECTURES gfx1031)
-
     set(HIP_SRC src/intersect_hip.cpp)
     set_source_files_properties(${HIP_SRC} PROPERTIES LANGUAGE HIP)
 
@@ -85,6 +86,7 @@ if(USE_HIP)
     find_library(HIP_LIB amdhip64 HINTS ${HIP_ROOT}/lib REQUIRED)
     find_library(HSA_LIB hsa-runtime64 HINTS ${HIP_ROOT}/lib REQUIRED)
 
+    target_compile_options(portableRT_hip PRIVATE -fPIC)
     target_link_libraries(portableRT PUBLIC ${HIP_LIB} ${HSA_LIB})
 else()
     message(STATUS "Building without HIP")
@@ -101,6 +103,7 @@ if(USE_EMBREE_CPU AND NOT USE_EMBREE_SYCL)
     target_include_directories(portableRT PUBLIC
     "${embree_ROOT}/include"    
     )
+    add_library(portableRT src/intersect_embree_cpu.cpp)
 else()
     message(STATUS "Building without Embree-cpu")
 endif()
