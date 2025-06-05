@@ -18,10 +18,16 @@
 constexpr uint32_t InvalidValue = ~0u;
 
 struct Aabb {
-  Aabb() {}
+
+  Aabb() { reset(); }
   Aabb(float3 min, float3 max) : m_min(min), m_max(max) {}
   float3 m_min;
   float3 m_max;
+  void reset()
+	{
+		m_min = float3(   3.402823466e+38f );
+		m_max = float3( -  3.402823466e+38f );
+	}
 };
 
 struct alignas(64) BoxNode {
@@ -54,11 +60,10 @@ struct alignas(64) TriangleNode {
 };
 static_assert(sizeof(TriangleNode) == 64);
 
-__host__ __device__ uint4 make_descriptor(const void *nodes) {
+__host__ __device__ uint4 make_descriptor(const void *nodes, uint64_t size) {
   uint32_t boxSortHeuristic = 0u;
   uint32_t boxGrowUlp = 6u;
   uint32_t boxSortEnabled = 1u;
-  uint64_t size = -1ull;
   uint32_t bigPage = 0u;
   uint32_t llcNoalloc = 0u;
 
@@ -82,24 +87,30 @@ __host__ __device__ uint4 make_descriptor(const void *nodes) {
   return descriptor;
 }
 
-static uint64_t encodeBaseAddr(const void *baseAddr, uint32_t nodeIndex) {
+static uint32_t encodeNodeIndex( uint32_t nodeAddr, uint32_t nodeType )
+{
+	return ( nodeAddr << 3 ) | nodeType;
+}
+
+__device__ __host__ static uint64_t encodeBaseAddr(const void *baseAddr, uint32_t nodeIndex) {
   uint64_t baseIndex = reinterpret_cast<uint64_t>(baseAddr) >> 3ull;
   return baseIndex + nodeIndex;
 }
 
-__global__ void kernel(void *bvh, uint4 *out, float4 ray_o, float4 ray_d) {
+__global__ void kernel(void *bvh, uint4 *out, float4 ray_o, float4 ray_d, uint64_t size) {
 
-  uint4 desc = make_descriptor(bvh);
+  uint4 desc = make_descriptor(bvh, size);
 
   float ray_extent = 100;
+  uint64_t root = encodeBaseAddr(bvh, 0);
 
   float4 ray_id;
-  ray_id.x = 1 / (ray_d.x + 0.001);
-  ray_id.y = 1 / (ray_d.y + 0.001);
-  ray_id.z = 1 / (ray_d.z + 0.001);
+  ray_id.x = 1 / (ray_d.x);
+  ray_id.y = 1 / (ray_d.y);
+  ray_id.z = 1 / (ray_d.z);
   // V4Ui Ui f V4f V4f V4f V4Ui
   auto res = __builtin_amdgcn_image_bvh_intersect_ray_l(
-      0, ray_extent, ray_o.data, ray_d.data, ray_id.data, desc.data);
+      16, ray_extent, ray_o.data, ray_d.data, ray_id.data, desc.data);
   out->x = res[0];
   out->y = res[1];
   out->z = res[2];
@@ -108,7 +119,14 @@ __global__ void kernel(void *bvh, uint4 *out, float4 ray_o, float4 ray_d) {
 
 namespace portableRT {
 
-void HIPBackend::set_tris(const Tris &tris) { m_tris = tris; }
+void HIPBackend::set_tris(const Tris &tris) {
+  m_tris = tris;
+
+  m_bvh = new BVH();
+  m_bvh->triIndices = new int[tris.size()];
+  m_bvh->tris = m_tris.data();
+  m_bvh->build(&tris);
+}
 
 bool HIPBackend::intersect_tris(const Ray &ray) {
 
@@ -130,19 +148,36 @@ bool HIPBackend::intersect_tris(const Ray &ray) {
     leaf.m_triPair.m_v0 = {v[0], v[1], v[2]};
     leaf.m_triPair.m_v1 = {v[3], v[4], v[5]};
     leaf.m_triPair.m_v2 = {v[6], v[7], v[8]};
+    leaf.m_primIndex0 = 0;
 
     leaf.m_flags = (2 << 2) | (1 << 0);
 
-    void *d_bvh;
-    CHK(hipMalloc(&d_bvh, sizeof(TriangleNode)));
-    CHK(hipMemcpy(d_bvh, &leaf, sizeof(TriangleNode), hipMemcpyHostToDevice));
+    size_t bvh_size = sizeof(TriangleNode) + sizeof(BoxNode);
+
+    void* raw;                       // sin alinear
+    CHK( hipMalloc(&raw, bvh_size + 255) );
+
+    uintptr_t aligned = (reinterpret_cast<uintptr_t>(raw) + 255) & ~uintptr_t(255);
+    void*     d_bvh   = reinterpret_cast<void*>(aligned);
+
+    BoxNode node{};
+    node.m_childIndex0 = encodeNodeIndex(sizeof(BoxNode) >> 3, 0); 
+    node.m_box0 = Aabb(min_b, max_b);
+    node.m_childCount = 1; // Solo un hijo activo
+
+
+    CHK(hipMemcpy(d_bvh, &node, sizeof(BoxNode), hipMemcpyHostToDevice));
+    CHK(hipMemcpy((char*)d_bvh + sizeof(BoxNode),
+              &leaf,
+              sizeof(TriangleNode),
+              hipMemcpyHostToDevice));
 
     uint4 *dHit;
     CHK(hipMalloc(&dHit, sizeof(uint4)));
 
     kernel<<<1, 1>>>(d_bvh, dHit,
                      {ray.origin[0], ray.origin[1], ray.origin[2], 0},
-                     {ray.direction[0], ray.direction[1], ray.direction[2], 0});
+                     {ray.direction[0], ray.direction[1], ray.direction[2], 0}, 2);
     CHK(hipDeviceSynchronize());
     uint4 hv;
     CHK(hipMemcpy(&hv, dHit, sizeof(uint4), hipMemcpyDeviceToHost));
