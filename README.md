@@ -106,12 +106,13 @@ int main() {
     miss_ray.origin = std::array<float, 3> {-2,0,-1};
     miss_ray.direction = std::array<float, 3>{0,0,1};
 
-    for(auto backend : portableRT::available_backends()){
-        std::cout << "Testing " << backend.name << std::endl;
-        portableRT::select_backend(backend);
-        bool hit1 = portableRT::intersect_tri(vertices, hit_ray);
-        bool hit2 = portableRT::intersect_tri(vertices, miss_ray);
-        std::cout << "Ray 1: " << hit1 << "\nRay 2: " << hit2 << std::endl;
+    for (auto backend : portableRT::available_backends()) {
+      std::cout << "Testing " << backend->name() << std::endl;
+      portableRT::select_backend(backend);
+      backend->set_tris({vertices});
+      bool hit1 = portableRT::intersect_tris(hit_ray);
+      bool hit2 = portableRT::intersect_tris(miss_ray);
+      std::cout << "Ray 1: " << hit1 << "\nRay 2: " << hit2 << std::endl;
     }
 
     return 0;

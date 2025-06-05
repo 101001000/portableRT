@@ -137,7 +137,7 @@ int main() {
 
       bool hit = portableRT::intersect_tris(ray);
 
-      image[width * y + x] = static_cast<unsigned char>(hit * 255.0f);
+      image[width * (height - y - 1) + x] = static_cast<unsigned char>(hit * 255.0f);
     }
   }
 
