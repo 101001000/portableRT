@@ -21,9 +21,7 @@ public:
 
   // TODO make pure virtual
   // TODO make move version
-  inline virtual void set_tris(const Tris &tris) {
-    std::cout << "unimplemented feature" << std::endl;
-  }
+  virtual void set_tris(const Tris &tris) = 0;
   virtual bool is_available() const = 0;
   virtual void init() = 0;
   virtual void shutdown() = 0;

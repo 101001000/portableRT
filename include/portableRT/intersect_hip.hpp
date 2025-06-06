@@ -17,7 +17,7 @@ public:
 
 private:
   Tris m_tris;
-  BVH* m_bvh;
+  void* m_dbvh;
 };
 
 static HIPBackend hip_backend;
