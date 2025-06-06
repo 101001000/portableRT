@@ -17,6 +17,7 @@ public:
 
 private:
   Tris m_tris;
+  uint64_t m_rootidx;
   void* m_dbvh;
 };
 

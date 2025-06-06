@@ -267,6 +267,7 @@ void BVH::divideSAH(std::vector<BVHTri> *tris, std::vector<BVHTri> *trisLeft,
       if (totalB1[axis] != totalB2[axis]) {
         float c = centroid(tris->at(i).tri)[axis];
         bin = map(c, totalB1[axis], totalB2[axis], 0, BVH_SAHBINS - 1);
+        bin = std::min(std::max(int(bin), 0), BVH_SAHBINS - 1);
       }
 
       count[bin]++;
@@ -311,6 +312,7 @@ void BVH::divideSAH(std::vector<BVHTri> *tris, std::vector<BVHTri> *trisLeft,
 
     float c = centroid(tris->at(i).tri)[bestAxis];
     int bin = map(c, totalB1[bestAxis], totalB2[bestAxis], 0, BVH_SAHBINS - 1);
+    bin = std::min(std::max(int(bin), 0), BVH_SAHBINS - 1);
 
     if (bin < bestBin) {
       trisLeft->push_back(tris->at(i));
@@ -318,6 +320,8 @@ void BVH::divideSAH(std::vector<BVHTri> *tris, std::vector<BVHTri> *trisLeft,
       trisRight->push_back(tris->at(i));
     }
   }
+
+  std::cout << "Left: " << trisLeft->size() << " Right: " << trisRight->size() << std::endl;
 }
 
 void BVH::boundsUnion(Vector3 b1, Vector3 b2, Vector3 b3, Vector3 b4,

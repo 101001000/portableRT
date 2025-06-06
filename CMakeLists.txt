@@ -53,7 +53,7 @@ if(USE_OPTIX)
     add_custom_target(compile_shaders ALL DEPENDS ${PTX_FILES})
     add_dependencies(portableRT compile_shaders)
 
-    add_library(portableRT src/intersect_optix.cpp)
+    target_sources(portableRT src/intersect_optix.cpp)
 else()
     message(STATUS "Building without OptiX")
 endif()
@@ -103,7 +103,7 @@ if(USE_EMBREE_CPU AND NOT USE_EMBREE_SYCL)
     target_include_directories(portableRT PUBLIC
     "${embree_ROOT}/include"    
     )
-    add_library(portableRT src/intersect_embree_cpu.cpp)
+    target_sources(portableRT src/intersect_embree_cpu.cpp)
 else()
     message(STATUS "Building without Embree-cpu")
 endif()
@@ -161,5 +161,8 @@ install(DIRECTORY include/ DESTINATION include)
 
 set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/install)
 
+
+target_compile_options(portableRT PUBLIC -fsanitize=address,undefined -g -O0)
+target_link_options(portableRT PUBLIC -fsanitize=address,undefined)
 
 add_subdirectory(examples)

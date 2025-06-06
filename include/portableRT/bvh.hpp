@@ -10,7 +10,7 @@
 
 #include "core.hpp"
 
-#define BVH_DEPTH 18
+#define BVH_DEPTH 2
 #define BVH_SAHBINS 14
 
 // Workaround for compiling with non sycl compilers
