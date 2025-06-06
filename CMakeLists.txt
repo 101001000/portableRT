@@ -162,7 +162,7 @@ install(DIRECTORY include/ DESTINATION include)
 set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/install)
 
 
-target_compile_options(portableRT PUBLIC -fsanitize=address,undefined -g -O0)
-target_link_options(portableRT PUBLIC -fsanitize=address,undefined)
+#target_compile_options(portableRT PUBLIC -fsanitize=address,undefined -g -O0)
+#target_link_options(portableRT PUBLIC -fsanitize=address,undefined)
 
 add_subdirectory(examples)

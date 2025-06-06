@@ -246,8 +246,8 @@ struct ExNode{
   Tri tri;
   int idx;
 
-  ExNode* left_child;
-  ExNode* right_child;
+  std::unique_ptr<ExNode> left_child;
+  std::unique_ptr<ExNode> right_child;
   ExNode* parent;
 
   Aabb aabb;
@@ -277,8 +277,8 @@ struct ExNode{
 
 void process(ExNode* node, std::vector<uint8_t>& data){
   if(node == nullptr) return;
-  process(node->left_child, data);
-  process(node->right_child, data);
+  process(node->left_child.get(), data);
+  process(node->right_child.get(), data);
   if(node->leaf){
     node->aabb = Aabb(node->tri);
     node->idx = data.size() >> 3;
@@ -298,20 +298,18 @@ void make_extended_tree_second(BVH* bvh, ExNode* node, int from, int to){
   } else {
     node->leaf = false;
     int h = (to - from) / 2;
-    ExNode* left = new ExNode();
-    ExNode* right = new ExNode();
-    left->parent = node;
-    right->parent = node;
-    node->left_child = left;
-    node->right_child = right;
-    make_extended_tree_second(bvh, left, from, from + h);
-    make_extended_tree_second(bvh, right, from + h, to);
+    node->left_child = std::make_unique<ExNode>();
+    node->right_child = std::make_unique<ExNode>();
+    node->left_child->parent = node;
+    node->right_child->parent = node;
+    make_extended_tree_second(bvh, node->left_child.get(), from, from + h);
+    make_extended_tree_second(bvh, node->right_child.get(), from + h, to);
   }
 }
 
-ExNode* make_extended_tree_r(BVH* bvh, ExNode* parent, Node i_node){
+std::unique_ptr<ExNode> make_extended_tree_r(BVH* bvh, ExNode* parent, Node i_node){
 
-  ExNode* node = new ExNode();
+  std::unique_ptr<ExNode> node = std::make_unique<ExNode>();
   node->parent = parent;
 
   if(i_node.depth == BVH_DEPTH){
@@ -320,24 +318,24 @@ ExNode* make_extended_tree_r(BVH* bvh, ExNode* parent, Node i_node){
       const auto tri = bvh->tris[bvh->triIndices[i_node.from]];
       node->tri = {tri[0], tri[1], tri[2], tri[3], tri[4], tri[5], tri[6], tri[7], tri[8]};
     } else {
-      make_extended_tree_second(bvh, node, i_node.from, i_node.to);
+      make_extended_tree_second(bvh, node.get(), i_node.from, i_node.to);
     }
   } else {
     node->leaf = false;
-    node->left_child = make_extended_tree_r(bvh, node, bvh->leftChild(i_node.idx, i_node.depth));
-    node->right_child = make_extended_tree_r(bvh, node, bvh->rightChild(i_node.idx, i_node.depth));
+    node->left_child = make_extended_tree_r(bvh, node.get(), bvh->leftChild(i_node.idx, i_node.depth));
+    node->right_child = make_extended_tree_r(bvh, node.get(), bvh->rightChild(i_node.idx, i_node.depth));
   }
 
-  return node;
+  return std::move(node);
 }
 
-ExNode* make_extended_tree(BVH* bvh){
-  ExNode* root = new ExNode();
+std::unique_ptr<ExNode> make_extended_tree(BVH* bvh){
+  std::unique_ptr<ExNode> root = std::make_unique<ExNode>();
   root->leaf = false;
   root->parent = nullptr;
-  root->left_child = make_extended_tree_r(bvh, root, bvh->leftChild(bvh->nodes[0].idx, bvh->nodes[0].depth));
-  root->right_child = make_extended_tree_r(bvh, root, bvh->rightChild(bvh->nodes[0].idx, bvh->nodes[0].depth));
-  return root;  
+  root->left_child = make_extended_tree_r(bvh, root.get(), bvh->leftChild(bvh->nodes[0].idx, bvh->nodes[0].depth));
+  root->right_child = make_extended_tree_r(bvh, root.get(), bvh->rightChild(bvh->nodes[0].idx, bvh->nodes[0].depth));
+  return std::move(root);  
 }
 
 
@@ -345,8 +343,8 @@ void* parse_bvh(BVH* bvh, uint64_t& rootidx){
 
   std::vector<uint8_t> buff{};
 
-  ExNode* root = make_extended_tree(bvh);
-  process(root, buff);
+  std::unique_ptr<ExNode> root = make_extended_tree(bvh);
+  process(root.get(), buff);
 
   rootidx = root->idx;
   //std::cout << "root idx " << rootidx << std::endl;
@@ -397,6 +395,8 @@ void HIPBackend::set_tris(const Tris &tris) {
   bvh->build(&m_tris);
 
   m_dbvh = parse_bvh(bvh, m_rootidx);
+  delete[] bvh->triIndices;
+  delete(bvh);
 }
 
 

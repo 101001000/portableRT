@@ -321,7 +321,7 @@ void BVH::divideSAH(std::vector<BVHTri> *tris, std::vector<BVHTri> *trisLeft,
     }
   }
 
-  std::cout << "Left: " << trisLeft->size() << " Right: " << trisRight->size() << std::endl;
+  //std::cout << "Left: " << trisLeft->size() << " Right: " << trisRight->size() << std::endl;
 }
 
 void BVH::boundsUnion(Vector3 b1, Vector3 b2, Vector3 b3, Vector3 b4,
