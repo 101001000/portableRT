@@ -79,9 +79,11 @@ RTCDevice initializeDevice(sycl::context &sycl_context,
   return device;
 }
 
-void castRay(sycl::queue &queue, const RTCTraversable traversable, const std::vector<portableRT::Ray>& rays, Result *results) {
+void castRay(sycl::queue &queue, const RTCTraversable traversable,
+             const std::vector<portableRT::Ray> &rays, Result *results) {
 
-  portableRT::Ray* d_rays = sycl::malloc_device<portableRT::Ray>(rays.size(), queue);
+  portableRT::Ray *d_rays =
+      sycl::malloc_device<portableRT::Ray>(rays.size(), queue);
   queue.memcpy(d_rays, rays.data(), sizeof(portableRT::Ray) * rays.size());
 
   queue.submit([=](sycl::handler &cgh) {
@@ -186,19 +188,22 @@ void EmbreeSYCLBackend::set_tris(const Tris &tris) {
   m_rtctraversable = rtcGetSceneTraversable(m_rtcscene);
 }
 
-std::vector<float> EmbreeSYCLBackend::nearest_hits(const std::vector<Ray> &rays) {
+std::vector<float>
+EmbreeSYCLBackend::nearest_hits(const std::vector<Ray> &rays) {
   try {
 
     std::vector<float> hits;
-    Result *result = alignedSYCLMallocDeviceReadWrite<Result>(m_impl->m_q, rays.size(), 16);
-    //result->geomID = RTC_INVALID_GEOMETRY_ID;
+    Result *result =
+        alignedSYCLMallocDeviceReadWrite<Result>(m_impl->m_q, rays.size(), 16);
+    // result->geomID = RTC_INVALID_GEOMETRY_ID;
 
     /* This will hit the triangle at t=1. */
-    castRay(m_impl->m_q, m_rtctraversable, rays,
-            result);
+    castRay(m_impl->m_q, m_rtctraversable, rays, result);
 
-    for(int i = 0; i < rays.size(); ++i){
-      hits.push_back(result[i].geomID == RTC_INVALID_GEOMETRY_ID ? std::numeric_limits<float>::infinity() : result[i].tfar);
+    for (int i = 0; i < rays.size(); ++i) {
+      hits.push_back(result[i].geomID == RTC_INVALID_GEOMETRY_ID
+                         ? std::numeric_limits<float>::infinity()
+                         : result[i].tfar);
     }
     alignedSYCLFree(m_impl->m_q, result);
     return hits;

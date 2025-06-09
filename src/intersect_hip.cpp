@@ -122,7 +122,7 @@ __global__ void nearest_hit(void *bvh, float *out, portableRT::Ray *rays,
                             uint64_t size, uint64_t pos, uint64_t num_rays) {
 
   int idx = threadIdx.x + blockIdx.x * blockDim.x;
-  if(idx >= num_rays)
+  if (idx >= num_rays)
     return;
 
   float4 ray_o;
@@ -430,9 +430,8 @@ std::vector<float> HIPBackend::nearest_hits(const std::vector<Ray> &rays) {
   int block_size = 64;
   int blocks = (rays.size() + block_size - 1) / block_size;
 
-  nearest_hit<<<blocks, block_size>>>(
-      m_dbvh, dHit, dRays, 1000000000,
-      m_rootidx, rays.size());
+  nearest_hit<<<blocks, block_size>>>(m_dbvh, dHit, dRays, 1000000000,
+                                      m_rootidx, rays.size());
   CHK(hipDeviceSynchronize());
   float *hHit = new float[rays.size()];
   CHK(hipMemcpy(hHit, dHit, sizeof(float) * rays.size(),
