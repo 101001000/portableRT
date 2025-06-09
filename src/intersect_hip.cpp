@@ -13,7 +13,6 @@
 #define CHK(x)                                                                 \
   if ((x) != hipSuccess) {                                                     \
     std::cerr << "HIP " << hipGetErrorString(x) << '\n';                       \
-    return 0;                                                                  \
   }
 
 constexpr uint32_t InvalidValue = ~0u;
@@ -119,21 +118,35 @@ __device__ __host__ static uint64_t encodeBaseAddr(const void *baseAddr,
   return baseIndex + nodeIndex;
 }
 
-__global__ void nearest_hit(void *bvh, bool *out, float4 ray_o, float4 ray_d,
-                            uint64_t size, uint64_t pos) {
+__global__ void nearest_hit(void *bvh, float *out, portableRT::Ray *rays,
+                            uint64_t size, uint64_t pos, uint64_t num_rays) {
+
+  int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  if(idx >= num_rays)
+    return;
+
+  float4 ray_o;
+  ray_o.x = rays[idx].origin[0];
+  ray_o.y = rays[idx].origin[1];
+  ray_o.z = rays[idx].origin[2];
+
+  float4 ray_d;
+  ray_d.x = rays[idx].direction[0];
+  ray_d.y = rays[idx].direction[1];
+  ray_d.z = rays[idx].direction[2];
+
+  float4 ray_id;
+  ray_id.x = 1 / (rays[idx].direction[0]);
+  ray_id.y = 1 / (rays[idx].direction[1]);
+  ray_id.z = 1 / (rays[idx].direction[2]);
 
   uint4 desc = make_descriptor(bvh, size);
-  uint64_t stack[1024];
+  uint64_t stack[64];
   stack[0] = pos;
   stack[1] = InvalidValue;
   int stack_ptr = 0;
 
-  float4 ray_id;
-  ray_id.x = 1 / (ray_d.x);
-  ray_id.y = 1 / (ray_d.y);
-  ray_id.z = 1 / (ray_d.z);
-
-  bool hit = false;
+  float hit = std::numeric_limits<float>::infinity();
 
   while (stack_ptr >= 0) {
 
@@ -154,11 +167,11 @@ __global__ void nearest_hit(void *bvh, bool *out, float4 ray_o, float4 ray_d,
         stack[++stack_ptr] = res[i];
       }
     } else {
-      hit |= res[3];
+      hit = std::min(hit, float(res[3]));
     }
   }
 
-  *out = hit;
+  out[idx] = hit;
 }
 
 namespace portableRT {
@@ -405,21 +418,29 @@ void HIPBackend::set_tris(const Tris &tris) {
   delete (bvh);
 }
 
-bool HIPBackend::intersect_tris(const Ray &ray) {
+std::vector<float> HIPBackend::nearest_hits(const std::vector<Ray> &rays) {
 
-  bool *dHit;
-  CHK(hipMalloc(&dHit, sizeof(bool)));
+  float *dHit;
+  Ray *dRays;
+  CHK(hipMalloc(&dHit, sizeof(float) * rays.size()));
+  CHK(hipMalloc(&dRays, sizeof(Ray) * rays.size()));
+  CHK(hipMemcpy(dRays, rays.data(), sizeof(Ray) * rays.size(),
+                hipMemcpyHostToDevice));
 
-  nearest_hit<<<1, 1>>>(
-      m_dbvh, dHit, {ray.origin[0], ray.origin[1], ray.origin[2], 0},
-      {ray.direction[0], ray.direction[1], ray.direction[2], 0}, 1000000000,
-      m_rootidx);
+  int block_size = 64;
+  int blocks = (rays.size() + block_size - 1) / block_size;
+
+  nearest_hit<<<blocks, block_size>>>(
+      m_dbvh, dHit, dRays, 1000000000,
+      m_rootidx, rays.size());
   CHK(hipDeviceSynchronize());
-  bool hv;
-  CHK(hipMemcpy(&hv, dHit, sizeof(bool), hipMemcpyDeviceToHost));
+  float *hHit = new float[rays.size()];
+  CHK(hipMemcpy(hHit, dHit, sizeof(float) * rays.size(),
+                hipMemcpyDeviceToHost));
   CHK(hipFree(dHit));
+  CHK(hipFree(dRays));
 
-  return hv;
+  return std::vector<float>(hHit, hHit + rays.size());
 }
 
 void HIPBackend::init() {}
