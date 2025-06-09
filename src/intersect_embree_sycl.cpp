@@ -79,12 +79,15 @@ RTCDevice initializeDevice(sycl::context &sycl_context,
   return device;
 }
 
-void castRay(sycl::queue &queue, const RTCTraversable traversable, float ox,
-             float oy, float oz, float dx, float dy, float dz, Result *result) {
+void castRay(sycl::queue &queue, const RTCTraversable traversable, const std::vector<portableRT::Ray>& rays, Result *results) {
+
+  portableRT::Ray* d_rays = sycl::malloc_device<portableRT::Ray>(rays.size(), queue);
+  queue.memcpy(d_rays, rays.data(), sizeof(portableRT::Ray) * rays.size());
+
   queue.submit([=](sycl::handler &cgh) {
     cgh.set_specialization_constant<feature_mask>(required_features);
 
-    cgh.parallel_for(sycl::range<1>(1),
+    cgh.parallel_for(sycl::range<1>(rays.size()),
                      [=](sycl::item<1> item, sycl::kernel_handler kh) {
                        /*
                         * The intersect arguments can be used to pass a feature
@@ -104,12 +107,12 @@ void castRay(sycl::queue &queue, const RTCTraversable traversable, float ox,
                         * documentation for rtcIntersect1() for details.
                         */
                        struct RTCRayHit rayhit;
-                       rayhit.ray.org_x = ox;
-                       rayhit.ray.org_y = oy;
-                       rayhit.ray.org_z = oz;
-                       rayhit.ray.dir_x = dx;
-                       rayhit.ray.dir_y = dy;
-                       rayhit.ray.dir_z = dz;
+                       rayhit.ray.org_x = d_rays[item].origin[0];
+                       rayhit.ray.org_y = d_rays[item].origin[1];
+                       rayhit.ray.org_z = d_rays[item].origin[2];
+                       rayhit.ray.dir_x = d_rays[item].direction[0];
+                       rayhit.ray.dir_y = d_rays[item].direction[1];
+                       rayhit.ray.dir_z = d_rays[item].direction[2];
                        rayhit.ray.tnear = 0;
                        rayhit.ray.tfar = std::numeric_limits<float>::infinity();
                        rayhit.ray.mask = -1;
@@ -126,12 +129,13 @@ void castRay(sycl::queue &queue, const RTCTraversable traversable, float ox,
                        /*
                         * write hit result to output buffer
                         */
-                       result->geomID = rayhit.hit.geomID;
-                       result->primID = rayhit.hit.primID;
-                       result->tfar = rayhit.ray.tfar;
+                       results[item].geomID = rayhit.hit.geomID;
+                       results[item].primID = rayhit.hit.primID;
+                       results[item].tfar = rayhit.ray.tfar;
                      });
   });
   queue.wait_and_throw();
+  sycl::free(d_rays, queue);
 }
 
 namespace portableRT {
@@ -182,27 +186,27 @@ void EmbreeSYCLBackend::set_tris(const Tris &tris) {
   m_rtctraversable = rtcGetSceneTraversable(m_rtcscene);
 }
 
-bool EmbreeSYCLBackend::intersect_tris(const Ray &ray) {
+std::vector<float> EmbreeSYCLBackend::nearest_hits(const std::vector<Ray> &rays) {
   try {
 
-    Result *result =
-        alignedSYCLMallocDeviceReadWrite<Result>(m_impl->m_q, 1, 16);
-    result->geomID = RTC_INVALID_GEOMETRY_ID;
+    std::vector<float> hits;
+    Result *result = alignedSYCLMallocDeviceReadWrite<Result>(m_impl->m_q, rays.size(), 16);
+    //result->geomID = RTC_INVALID_GEOMETRY_ID;
 
     /* This will hit the triangle at t=1. */
-    castRay(m_impl->m_q, m_rtctraversable, ray.origin[0], ray.origin[1],
-            ray.origin[2], ray.direction[0], ray.direction[1], ray.direction[2],
+    castRay(m_impl->m_q, m_rtctraversable, rays,
             result);
 
-    bool res = result->geomID != RTC_INVALID_GEOMETRY_ID;
-
+    for(int i = 0; i < rays.size(); ++i){
+      hits.push_back(result[i].geomID == RTC_INVALID_GEOMETRY_ID ? std::numeric_limits<float>::infinity() : result[i].tfar);
+    }
     alignedSYCLFree(m_impl->m_q, result);
-
-    return res;
+    return hits;
 
   } catch (sycl::_V1::exception &e) {
     std::cout << e.what() << std::endl;
-    return false;
+    return std::vector<float>(rays.size(),
+                              std::numeric_limits<float>::infinity());
   }
 }
 

@@ -14,7 +14,7 @@ public:
   EmbreeSYCLBackend();
   ~EmbreeSYCLBackend();
 
-  bool intersect_tris(const Ray &ray);
+  std::vector<float> nearest_hits(const std::vector<Ray> &rays);
   bool is_available() const override;
   void init() override;
   void shutdown() override;
@@ -34,6 +34,6 @@ private:
   unsigned int m_geom_id = RTC_INVALID_GEOMETRY_ID;
 };
 
-// static EmbreeSYCLBackend embreesycl_backend;
+static EmbreeSYCLBackend embreesycl_backend;
 
 } // namespace portableRT
