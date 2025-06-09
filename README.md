@@ -10,7 +10,7 @@
 
 portableRT is a C++ library that enables your application to perform ray tracing using all available hardware through a single API. On CPUs, it uses Embree. On GPUs, the user can choose between a general GPGPU approach, ideal for older or compute-focused GPUs without dedicated ray tracing units, or make use of the hardware-accelerated ray tracing units (when available)
 
-This first version is extremely simple and focuses solely on intersecting a ray with a triangle using all the available backends. It currently works with all the available GPUs Ray tracing cores.
+This first version is extremely simple and focuses solely on intersecting multiples ray with a triangle structure using all the available backends. It currently works with all the available GPUs Ray tracing cores.
 
 
 ## Recommended Backends by Device Type
@@ -88,33 +88,61 @@ cmake --build build
 
 That's it, you're ready to go.
 
+
+### Selecting a Backend
+
+You can select a backend at runtime using the `select_backend` function, as well as list all the available backends with `available_backends()`.
+
+### Building the acceleration structure
+
+By calling `set_tris(std::vector<std::array<float, 9>>)` and providing an array of triangles, the acceleration structure will be built automatically.
+
+```cpp
+backend->set_tris(triangles);
+```
+
+### Intersecting rays
+
+By calling `nearest_hits(std::vector<Ray>)` and providing an array of rays, the nearest hit for each ray will be computed and returned as an array of distances to the intersection (or infinity if the ray doesn't intersect any triangle). It can be called as a free function that doesn't relies on virtual dispatch (and the only overhead is just a function pointer indirection), or as a member function of the backend object.
+
+```cpp
+std::vector<float> hits = portableRT::nearest_hits({rays});
+```
+
 ### Example
 
 ```cpp
-#include <portableRT/portableRT.hpp>
+#include <array>
 #include <iostream>
+#include <portableRT/portableRT.hpp>
 
 int main() {
 
-    std::array<float, 9> vertices = {-1,-1,0, 1,-1,0, 0,1,0};
+  std::array<float, 9> vertices = {-1, -1, 0, 1, -1, 0, 0, 1, 0};
 
-    portableRT::Ray hit_ray;
-    hit_ray.origin = std::array<float, 3>{0,0,-1};
-    hit_ray.direction = std::array<float, 3>{0,0,1};
+  portableRT::Ray hit_ray;
+  hit_ray.origin = std::array<float, 3>{0, 0, -1};
+  hit_ray.direction = std::array<float, 3>{0, 0, 1};
 
-    portableRT::Ray miss_ray;
-    miss_ray.origin = std::array<float, 3> {-2,0,-1};
-    miss_ray.direction = std::array<float, 3>{0,0,1};
+  portableRT::Ray miss_ray;
+  miss_ray.origin = std::array<float, 3>{-2, 0, -1};
+  miss_ray.direction = std::array<float, 3>{0, 0, 1};
 
-    for (auto backend : portableRT::available_backends()) {
-      std::cout << "Testing " << backend->name() << std::endl;
-      portableRT::select_backend(backend);
-      backend->set_tris({vertices});
-      bool hit1 = portableRT::intersect_tris(hit_ray);
-      bool hit2 = portableRT::intersect_tris(miss_ray);
-      std::cout << "Ray 1: " << hit1 << "\nRay 2: " << hit2 << std::endl;
-    }
+  for (auto backend : portableRT::available_backends()) {
+    std::cout << "Testing " << backend->name() << std::endl;
+    portableRT::select_backend(backend);
+    backend->set_tris({vertices});
+    std::vector<float> hits1 = portableRT::nearest_hits({hit_ray});
+    std::vector<float> hits2 = portableRT::nearest_hits({miss_ray});
+    std::cout << "Ray 1: "
+              << (hits1[0] == std::numeric_limits<float>::infinity() ? "miss"
+                                                                     : "hit")
+              << "\nRay 2: "
+              << (hits2[0] == std::numeric_limits<float>::infinity() ? "miss"
+                                                                     : "hit")
+              << std::endl;
+  }
 
-    return 0;
+  return 0;
 }
 ```
