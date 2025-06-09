@@ -8,25 +8,27 @@
 
 namespace portableRT {
 
-using IntersectDispatchFn = bool (*)(void *, const Ray &);
+using NearestHitsDispatchFn = std::vector<float> (*)(void *,
+                                                     const std::vector<Ray> &);
 
 class Backend {
 public:
-  Backend(std::string name, void *self_ptr, IntersectDispatchFn fn)
-      : name_{std::move(name)}, self_{self_ptr}, intersect_{fn} {}
+  Backend(std::string name, void *self_ptr, NearestHitsDispatchFn fn)
+      : name_{std::move(name)}, self_{self_ptr}, nearest_hits_{fn} {}
 
   const std::string &name() const { return name_; }
 
-  bool intersect_tris(const Ray &r) { return intersect_(self_, r); }
+  std::vector<float> nearest_hits(const std::vector<Ray> &rays) {
+    return nearest_hits_(self_, rays);
+  }
 
-  // TODO make pure virtual
   // TODO make move version
   virtual void set_tris(const Tris &tris) = 0;
   virtual bool is_available() const = 0;
   virtual void init() = 0;
   virtual void shutdown() = 0;
 
-  IntersectDispatchFn intersect_;
+  NearestHitsDispatchFn nearest_hits_;
   void *self_;
 
 private:
@@ -42,8 +44,8 @@ protected:
   ~InvokableBackend() = default;
 
 private:
-  static bool dispatch(void *self, const Ray &r) {
-    return static_cast<Derived *>(self)->intersect_tris(r);
+  static std::vector<float> dispatch(void *self, const std::vector<Ray> &rays) {
+    return static_cast<Derived *>(self)->nearest_hits(rays);
   }
 };
 
@@ -58,10 +60,10 @@ inline const std::vector<Backend *> &available_backends() {
   return available_backends_;
 }
 
-inline IntersectDispatchFn intersect_tris_call = nullptr;
+inline NearestHitsDispatchFn nearest_hits_call = nullptr;
 
-inline bool intersect_tris(const Ray &r) {
-  return intersect_tris_call(selected_backend->self_, r);
+inline std::vector<float> nearest_hits(const std::vector<Ray> &rays) {
+  return nearest_hits_call(selected_backend->self_, rays);
 }
 
 inline void select_backend(Backend *backend) {
@@ -69,7 +71,7 @@ inline void select_backend(Backend *backend) {
     selected_backend->shutdown();
   selected_backend = backend;
   backend->init();
-  intersect_tris_call = backend->intersect_;
+  nearest_hits_call = backend->nearest_hits_;
 }
 
 struct RegisterBackend {

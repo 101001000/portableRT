@@ -12,7 +12,7 @@ public:
     static RegisterBackend reg(*this);
   }
 
-  bool intersect_tris(const Ray &ray);
+  std::vector<float> nearest_hits(const std::vector<Ray> &rays);
   bool is_available() const override;
   void init() override;
   void shutdown() override;
@@ -30,8 +30,8 @@ private:
   OptixProgramGroup m_miss_prog_group = nullptr;
   OptixProgramGroup m_hitgroup_prog_group = nullptr;
   CUstream m_stream;
-  CUdeviceptr m_d_res;
   OptixTraversableHandle m_gas_handle;
+  CUdeviceptr m_d_gas_output_buffer;
 };
 
 static OptiXBackend optix_backend;

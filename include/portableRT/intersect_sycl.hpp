@@ -14,7 +14,7 @@ public:
   SYCLBackend();
   ~SYCLBackend();
 
-  bool intersect_tris(const Ray &ray);
+  std::vector<float> nearest_hits(const std::vector<Ray> &rays);
   bool is_available() const override;
   void init() override;
   void shutdown() override;

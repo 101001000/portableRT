@@ -18,9 +18,15 @@ int main() {
     std::cout << "Testing " << backend->name() << std::endl;
     portableRT::select_backend(backend);
     backend->set_tris({vertices});
-    bool hit1 = portableRT::intersect_tris(hit_ray);
-    bool hit2 = portableRT::intersect_tris(miss_ray);
-    std::cout << "Ray 1: " << hit1 << "\nRay 2: " << hit2 << std::endl;
+    std::vector<float> hits1 = portableRT::nearest_hits({hit_ray});
+    std::vector<float> hits2 = portableRT::nearest_hits({miss_ray});
+    std::cout << "Ray 1: "
+              << (hits1[0] == std::numeric_limits<float>::infinity() ? "miss"
+                                                                     : "hit")
+              << "\nRay 2: "
+              << (hits2[0] == std::numeric_limits<float>::infinity() ? "miss"
+                                                                     : "hit")
+              << std::endl;
   }
 
   return 0;

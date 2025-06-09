@@ -34,6 +34,6 @@ private:
   unsigned int m_geom_id = RTC_INVALID_GEOMETRY_ID;
 };
 
-static EmbreeSYCLBackend embreesycl_backend;
+// static EmbreeSYCLBackend embreesycl_backend;
 
 } // namespace portableRT

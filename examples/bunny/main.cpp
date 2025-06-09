@@ -108,14 +108,10 @@ int main() {
   std::cout << "BVH building time: " << bvh_duration.count() << " ms"
             << std::endl;
 
-  auto start = std::chrono::high_resolution_clock::now();
+  std::vector<portableRT::Ray> rays;
 
-  for (int y = 0; y < height; ++y) {
+  for (int y = height - 1; y >= 0; --y) {
     for (int x = 0; x < width; ++x) {
-
-      std::cout << "\r" << std::fixed << std::setprecision(3)
-                << 100.0f * static_cast<float>(y * width + x) / (height * width)
-                << "%" << std::flush;
 
       float sx = sensor_size * (static_cast<float>(x) / width - 0.5);
       float sy = sensor_size * (static_cast<float>(y) / height - 0.5);
@@ -131,24 +127,29 @@ int main() {
       float length =
           sqrt(sensor_pos[0] * sensor_pos[0] + sensor_pos[1] * sensor_pos[1] +
                sensor_pos[2] * sensor_pos[2]);
+
       ray.direction[0] /= length;
       ray.direction[1] /= length;
       ray.direction[2] /= length;
 
-      bool hit = portableRT::intersect_tris(ray);
-
-      image[width * (height - y - 1) + x] =
-          static_cast<unsigned char>(hit * 255.0f);
+      rays.push_back(ray);
     }
   }
 
+  auto start = std::chrono::high_resolution_clock::now();
+  std::vector<float> hits = portableRT::nearest_hits(rays);
   auto end = std::chrono::high_resolution_clock::now();
+
   auto duration =
       std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
   std::cout << "Execution time: " << duration.count() << " ms" << std::endl;
   std::cout << static_cast<int>((width * height) / (duration.count() / 1000.0f))
-            << "rays/s: " << std::endl;
+            << "rays/s" << std::endl;
+
+  for (size_t i = 0; i < hits.size(); i++) {
+    image[i] = hits[i] == std::numeric_limits<float>::infinity() ? 0 : 255;
+  }
 
   stbi_write_png("bunny_output.png", width, height, 1, image.data(), width);
 

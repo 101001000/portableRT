@@ -125,6 +125,7 @@ void BVH::intersectNode(Ray ray, Node node, Hit &nearestHit) {
       Hit hit;
       hit.valid = true;
       hit.position = ray.origin + t * ray.direction;
+      hit.t = t;
 
       // If previous hit was not valid, then the new is going to be nearer in
       // any case.
@@ -321,7 +322,8 @@ void BVH::divideSAH(std::vector<BVHTri> *tris, std::vector<BVHTri> *trisLeft,
     }
   }
 
-  //std::cout << "Left: " << trisLeft->size() << " Right: " << trisRight->size() << std::endl;
+  // std::cout << "Left: " << trisLeft->size() << " Right: " <<
+  // trisRight->size() << std::endl;
 }
 
 void BVH::boundsUnion(Vector3 b1, Vector3 b2, Vector3 b3, Vector3 b4,

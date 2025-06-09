@@ -18,8 +18,8 @@ RTCDevice initializeDevice() {
   return device;
 }
 
-bool castRay(RTCScene scene, float ox, float oy, float oz, float dx, float dy,
-             float dz) {
+float castRay(RTCScene scene, float ox, float oy, float oz, float dx, float dy,
+              float dz) {
 
   struct RTCRayHit rayhit;
   rayhit.ray.org_x = ox;
@@ -37,7 +37,7 @@ bool castRay(RTCScene scene, float ox, float oy, float oz, float dx, float dy,
 
   rtcIntersect1(scene, &rayhit);
 
-  return rayhit.hit.geomID != RTC_INVALID_GEOMETRY_ID;
+  return rayhit.ray.tfar;
 }
 
 namespace portableRT {
@@ -71,11 +71,19 @@ void EmbreeCPUBackend::set_tris(const Tris &tris) {
   rtcCommitScene(m_scene);
 }
 
-bool EmbreeCPUBackend::intersect_tris(const Ray &ray) {
-  bool res = castRay(m_scene, ray.origin[0], ray.origin[1], ray.origin[2],
-                     ray.direction[0], ray.direction[1], ray.direction[2]);
+std::vector<float>
+EmbreeCPUBackend::nearest_hits(const std::vector<Ray> &rays) {
 
-  return res;
+  std::vector<float> hits;
+  hits.reserve(rays.size());
+
+  for (const auto ray : rays) {
+    float t = castRay(m_scene, ray.origin[0], ray.origin[1], ray.origin[2],
+                      ray.direction[0], ray.direction[1], ray.direction[2]);
+    hits.push_back(t);
+  }
+
+  return hits;
 }
 
 bool EmbreeCPUBackend::is_available() const {

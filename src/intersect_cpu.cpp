@@ -3,11 +3,15 @@
 
 namespace portableRT {
 
-bool CPUBackend::intersect_tris(const Ray &ray) {
-  Hit hit;
-  hit.valid = false;
-  m_bvh->transverse(ray, hit);
-  return hit.valid;
+std::vector<float> CPUBackend::nearest_hits(const std::vector<Ray> &rays) {
+  std::vector<float> hits(rays.size());
+  for (size_t i = 0; i < rays.size(); i++) {
+    Hit hit;
+    hit.valid = false;
+    m_bvh->transverse(rays[i], hit);
+    hits[i] = hit.valid ? hit.t : std::numeric_limits<float>::infinity();
+  }
+  return hits;
 }
 
 bool CPUBackend::is_available() const { return true; }

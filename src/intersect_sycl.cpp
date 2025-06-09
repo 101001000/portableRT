@@ -48,31 +48,36 @@ void SYCLBackend::set_tris(const Tris &tris) {
 
 void SYCLBackend::shutdown() { m_impl.reset(); }
 
-bool SYCLBackend::intersect_tris(const Ray &ray) {
+std::vector<float> SYCLBackend::nearest_hits(const std::vector<Ray> &rays) {
   try {
-    bool *res = sycl::malloc_shared<bool>(1, m_impl->m_q);
+    float *res = sycl::malloc_shared<float>(rays.size(), m_impl->m_q);
+    Ray *rays_dev = sycl::malloc_device<Ray>(rays.size(), m_impl->m_q);
+    m_impl->m_q.memcpy(rays_dev, rays.data(), sizeof(Ray) * rays.size()).wait();
 
     BVH *bvh = m_dbvh;
 
     m_impl->m_q
         .submit([&](sycl::handler &cgh) {
-          cgh.single_task([=]() {
+          cgh.parallel_for(sycl::range<1>(rays.size()), [=](sycl::id<1> id) {
             Hit hit;
             hit.valid = false;
-            bvh->transverse(ray, hit);
-            *res = hit.valid;
+            bvh->transverse(rays_dev[id], hit);
+            res[id] =
+                hit.valid ? hit.t : std::numeric_limits<float>::infinity();
           });
         })
         .wait();
 
-    bool hit = *res;
+    std::vector<float> hits(rays.size());
+    m_impl->m_q.memcpy(hits.data(), res, sizeof(float) * rays.size()).wait();
     sycl::free(res, m_impl->m_q);
-    if (hit)
-      return true;
+    sycl::free(rays_dev, m_impl->m_q);
+    return hits;
   } catch (sycl::_V1::exception &e) {
     std::cout << e.what() << std::endl;
+    return std::vector<float>(rays.size(),
+                              std::numeric_limits<float>::infinity());
   }
-  return false;
 }
 
 bool SYCLBackend::is_available() const {

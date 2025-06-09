@@ -21,7 +21,7 @@ constexpr uint32_t InvalidValue = ~0u;
 struct Aabb {
 
   Aabb() { reset(); }
-  Aabb(const portableRT::Tri& tri) {
+  Aabb(const portableRT::Tri &tri) {
     m_min.x = std::min(tri[0], std::min(tri[3], tri[6]));
     m_min.y = std::min(tri[1], std::min(tri[4], tri[7]));
     m_min.z = std::min(tri[2], std::min(tri[5], tri[8]));
@@ -29,7 +29,7 @@ struct Aabb {
     m_max.y = std::max(tri[1], std::max(tri[4], tri[7]));
     m_max.z = std::max(tri[2], std::max(tri[5], tri[8]));
   }
-  Aabb(const Aabb& a, const Aabb& b) {
+  Aabb(const Aabb &a, const Aabb &b) {
     m_min.x = std::min(a.m_min.x, b.m_min.x);
     m_min.y = std::min(a.m_min.y, b.m_min.y);
     m_min.z = std::min(a.m_min.z, b.m_min.z);
@@ -40,13 +40,13 @@ struct Aabb {
   Aabb(float3 min, float3 max) : m_min(min), m_max(max) {}
   float3 m_min;
   float3 m_max;
-  void reset()
-	{
-		m_min = float3(   3.402823466e+38f );
-		m_max = float3( -  3.402823466e+38f );
-	}
-  void print(){
-    std::cout << m_min.x << " " << m_min.y << " " << m_min.z << " " << m_max.x << " " << m_max.y << " " << m_max.z << std::endl;
+  void reset() {
+    m_min = float3(3.402823466e+38f);
+    m_max = float3(-3.402823466e+38f);
+  }
+  void print() {
+    std::cout << m_min.x << " " << m_min.y << " " << m_min.z << " " << m_max.x
+              << " " << m_max.y << " " << m_max.z << std::endl;
   }
 };
 
@@ -107,18 +107,20 @@ __host__ __device__ uint4 make_descriptor(const void *nodes, uint64_t size) {
   return descriptor;
 }
 
-static uint32_t encodeNodeIndex( uint32_t nodeAddr, uint32_t nodeType )
-{
-  if ( nodeType == 5 ) nodeAddr *= 2;
-	return ( nodeAddr << 3 ) | nodeType;
+static uint32_t encodeNodeIndex(uint32_t nodeAddr, uint32_t nodeType) {
+  if (nodeType == 5)
+    nodeAddr *= 2;
+  return (nodeAddr << 3) | nodeType;
 }
 
-__device__ __host__ static uint64_t encodeBaseAddr(const void *baseAddr, uint32_t nodeIndex) {
+__device__ __host__ static uint64_t encodeBaseAddr(const void *baseAddr,
+                                                   uint32_t nodeIndex) {
   uint64_t baseIndex = reinterpret_cast<uint64_t>(baseAddr) >> 3ull;
   return baseIndex + nodeIndex;
 }
 
-__global__ void nearest_hit(void *bvh, bool *out, float4 ray_o, float4 ray_d, uint64_t size, uint64_t pos){
+__global__ void nearest_hit(void *bvh, bool *out, float4 ray_o, float4 ray_d,
+                            uint64_t size, uint64_t pos) {
 
   uint4 desc = make_descriptor(bvh, size);
   uint64_t stack[1024];
@@ -133,25 +135,27 @@ __global__ void nearest_hit(void *bvh, bool *out, float4 ray_o, float4 ray_d, ui
 
   bool hit = false;
 
-  while(stack_ptr >= 0){
+  while (stack_ptr >= 0) {
 
     uint32_t type = stack[stack_ptr] & 0x7;
-    auto res = __builtin_amdgcn_image_bvh_intersect_ray_l(stack[stack_ptr], 100, ray_o.data, ray_d.data, ray_id.data, desc.data);
+    auto res = __builtin_amdgcn_image_bvh_intersect_ray_l(
+        stack[stack_ptr], 100, ray_o.data, ray_d.data, ray_id.data, desc.data);
 
-    //printf("Pop %lu, type: %u, res: %d, %d, %d, %d\n", stack[stack_ptr], type, res[0], res[1], res[2], res[3]);
+    // printf("Pop %lu, type: %u, res: %d, %d, %d, %d\n", stack[stack_ptr],
+    // type, res[0], res[1], res[2], res[3]);
 
     stack_ptr--;
 
-    if(type != 0){
-      for(int i = 0; i < 4; i++){
-        if(res[i] == InvalidValue) break;
-        //printf("Push %d\n", res[i]);
+    if (type != 0) {
+      for (int i = 0; i < 4; i++) {
+        if (res[i] == InvalidValue)
+          break;
+        // printf("Push %d\n", res[i]);
         stack[++stack_ptr] = res[i];
       }
-    }else{
+    } else {
       hit |= res[3];
     }
-
   }
 
   *out = hit;
@@ -159,29 +163,24 @@ __global__ void nearest_hit(void *bvh, bool *out, float4 ray_o, float4 ray_d, ui
 
 namespace portableRT {
 
-
-void push_bytes(std::vector<uint8_t>& v, const void* p, size_t n){
-  const uint8_t* s = static_cast<const uint8_t*>(p);
+void push_bytes(std::vector<uint8_t> &v, const void *p, size_t n) {
+  const uint8_t *s = static_cast<const uint8_t *>(p);
   v.insert(v.end(), s, s + n);
 }
 
+void parse_bvh(BVH *bvh, Node node, std::vector<uint8_t> &data, int &offset,
+               uint32_t parentAddr) {
 
+  auto is_leaf = [](const Node &node) { return node.depth == BVH_DEPTH; };
 
-void parse_bvh(BVH* bvh, Node node, std::vector<uint8_t>& data, int& offset, uint32_t parentAddr){
+  auto make_f3 = [](const Vector3 &v) { return float3(v[0], v[1], v[2]); };
 
-  auto is_leaf = [](const Node& node){
-    return node.depth == BVH_DEPTH;
-  };
-
-  auto make_f3 = [](const Vector3& v){
-    return float3(v[0], v[1], v[2]);
-  };
-
-  if (is_leaf(node)){
-    if(abs(node.to - node.from) > 1){
-      std::cout << "More tris per node than allowed" << abs(node.to - node.from) << std::endl;
+  if (is_leaf(node)) {
+    if (abs(node.to - node.from) > 1) {
+      std::cout << "More tris per node than allowed" << abs(node.to - node.from)
+                << std::endl;
     }
-    if(node.to - node.from == 1){
+    if (node.to - node.from == 1) {
 
       const auto tri = bvh->tris[bvh->triIndices[node.from]];
 
@@ -189,22 +188,21 @@ void parse_bvh(BVH* bvh, Node node, std::vector<uint8_t>& data, int& offset, uin
       leaf.m_triPair.m_v0 = {tri[0], tri[1], tri[2]};
       leaf.m_triPair.m_v1 = {tri[3], tri[4], tri[5]};
       leaf.m_triPair.m_v2 = {tri[6], tri[7], tri[8]};
-      leaf.m_flags        = (1<<2)|(1<<0);
+      leaf.m_flags = (1 << 2) | (1 << 0);
 
-      //std::cout << "T()" << std::flush;
+      // std::cout << "T()" << std::flush;
 
       push_bytes(data, &leaf, sizeof(leaf));
       offset += sizeof(leaf);
     } else {
 
       TriangleNode leaf{};
-      leaf.m_flags        = (1<<2)|(1<<0);
+      leaf.m_flags = (1 << 2) | (1 << 0);
 
-      //std::cout << "E()" << std::flush;
+      // std::cout << "E()" << std::flush;
 
       push_bytes(data, &leaf, sizeof(leaf));
       offset += sizeof(leaf);
-
     }
   } else {
     Node left = bvh->leftChild(node.idx, node.depth);
@@ -212,35 +210,36 @@ void parse_bvh(BVH* bvh, Node node, std::vector<uint8_t>& data, int& offset, uin
 
     int k = BVH_DEPTH - node.depth;
     int N = pow(2, k) - 1; // Número de nodos del arbol izquierdo
-    int H = pow(2, k-1); // Número de hojas del árbol izquierdo.
-    int I = N - H; // Número de nodos interiores del árbol izquierdo.
+    int H = pow(2, k - 1); // Número de hojas del árbol izquierdo.
+    int I = N - H;         // Número de nodos interiores del árbol izquierdo.
 
     int left_off = (offset + sizeof(BoxNode)) >> 3;
-    int right_off = (offset + sizeof(BoxNode) + sizeof(BoxNode) * I + sizeof(TriangleNode) * H) >> 3;
-
+    int right_off = (offset + sizeof(BoxNode) + sizeof(BoxNode) * I +
+                     sizeof(TriangleNode) * H) >>
+                    3;
 
     BoxNode box{};
-    box.m_childCount  = 2;
-    box.m_box0        = Aabb(make_f3(left.b1), make_f3(left.b2));
+    box.m_childCount = 2;
+    box.m_box0 = Aabb(make_f3(left.b1), make_f3(left.b2));
     box.m_childIndex0 = is_leaf(left) ? left_off : left_off + 5;
-    box.m_box1        = Aabb(make_f3(right.b1), make_f3(right.b2));
+    box.m_box1 = Aabb(make_f3(right.b1), make_f3(right.b2));
     box.m_childIndex1 = is_leaf(right) ? right_off : right_off + 5;
-    box.m_parentAddr  = parentAddr;
-
+    box.m_parentAddr = parentAddr;
 
     push_bytes(data, &box, sizeof(box));
     offset += sizeof(box);
-    //std::cout << left.b1[0] << " " << left.b1[1] << " " << left.b1[2] << " " << left.b2[0] << " " << left.b2[1] << " " << left.b2[2] << " | ";
-    //std::cout << right.b1[0] << " " << right.b1[1] << " " << right.b1[2] << " " << right.b2[0] << " " << right.b2[1] << " " << right.b2[2] << " | ";
-    //std::cout << "B(" << left_off << ", " << right_off << ")" << std::flush;
+    // std::cout << left.b1[0] << " " << left.b1[1] << " " << left.b1[2] << " "
+    // << left.b2[0] << " " << left.b2[1] << " " << left.b2[2] << " | ";
+    // std::cout << right.b1[0] << " " << right.b1[1] << " " << right.b1[2] << "
+    // " << right.b2[0] << " " << right.b2[1] << " " << right.b2[2] << " | ";
+    // std::cout << "B(" << left_off << ", " << right_off << ")" << std::flush;
 
-    parse_bvh(bvh, left, data, offset, (offset>>3) + 5);
-    parse_bvh(bvh, right, data, offset, (offset>>3) + 5);
+    parse_bvh(bvh, left, data, offset, (offset >> 3) + 5);
+    parse_bvh(bvh, right, data, offset, (offset >> 3) + 5);
   }
-
 }
 
-struct ExNode{
+struct ExNode {
 
   bool leaf;
   Tri tri;
@@ -248,53 +247,56 @@ struct ExNode{
 
   std::unique_ptr<ExNode> left_child;
   std::unique_ptr<ExNode> right_child;
-  ExNode* parent;
+  ExNode *parent;
 
   Aabb aabb;
 
-  void flatten(std::vector<uint8_t>& data){
-    if(leaf){
+  void flatten(std::vector<uint8_t> &data) {
+    if (leaf) {
       TriangleNode leaf{};
       leaf.m_triPair.m_v0 = {tri[0], tri[1], tri[2]};
       leaf.m_triPair.m_v1 = {tri[3], tri[4], tri[5]};
       leaf.m_triPair.m_v2 = {tri[6], tri[7], tri[8]};
-      leaf.m_flags        = (1<<2)|(1<<0);
+      leaf.m_flags = (1 << 2) | (1 << 0);
       push_bytes(data, &leaf, sizeof(leaf));
-      //std::cout << "L(" << idx << ")" << std::flush;
+      // std::cout << "L(" << idx << ")" << std::flush;
     } else {
       BoxNode box{};
-      box.m_childCount  = 2;
-      box.m_box0        = left_child->aabb;
+      box.m_childCount = 2;
+      box.m_box0 = left_child->aabb;
       box.m_childIndex0 = left_child->idx;
-      box.m_box1        = right_child->aabb;
+      box.m_box1 = right_child->aabb;
       box.m_childIndex1 = right_child->idx;
-      //box.m_parentAddr  = parent->idx; 
+      // box.m_parentAddr  = parent->idx;
       push_bytes(data, &box, sizeof(box));
-      //std::cout << "B(" << idx << ")->[" << left_child->idx << ", " << right_child->idx << "]" << std::flush;
+      // std::cout << "B(" << idx << ")->[" << left_child->idx << ", " <<
+      // right_child->idx << "]" << std::flush;
     }
   }
 };
 
-void process(ExNode* node, std::vector<uint8_t>& data){
-  if(node == nullptr) return;
+void process(ExNode *node, std::vector<uint8_t> &data) {
+  if (node == nullptr)
+    return;
   process(node->left_child.get(), data);
   process(node->right_child.get(), data);
-  if(node->leaf){
+  if (node->leaf) {
     node->aabb = Aabb(node->tri);
     node->idx = data.size() >> 3;
     node->flatten(data);
-  }else{
+  } else {
     node->aabb = Aabb(node->left_child->aabb, node->right_child->aabb);
     node->idx = (data.size() >> 3) + 5;
     node->flatten(data);
   }
 }
 
-void make_extended_tree_second(BVH* bvh, ExNode* node, int from, int to){
-  if(to - from <= 1){
+void make_extended_tree_second(BVH *bvh, ExNode *node, int from, int to) {
+  if (to - from <= 1) {
     node->leaf = true;
     const auto tri = bvh->tris[bvh->triIndices[from]];
-    node->tri = {tri[0], tri[1], tri[2], tri[3], tri[4], tri[5], tri[6], tri[7], tri[8]};
+    node->tri = {tri[0], tri[1], tri[2], tri[3], tri[4],
+                 tri[5], tri[6], tri[7], tri[8]};
   } else {
     node->leaf = false;
     int h = (to - from) / 2;
@@ -307,39 +309,44 @@ void make_extended_tree_second(BVH* bvh, ExNode* node, int from, int to){
   }
 }
 
-std::unique_ptr<ExNode> make_extended_tree_r(BVH* bvh, ExNode* parent, Node i_node){
+std::unique_ptr<ExNode> make_extended_tree_r(BVH *bvh, ExNode *parent,
+                                             Node i_node) {
 
   std::unique_ptr<ExNode> node = std::make_unique<ExNode>();
   node->parent = parent;
 
-  if(i_node.depth == BVH_DEPTH){
-    if(i_node.to - i_node.from == 1){
+  if (i_node.depth == BVH_DEPTH) {
+    if (i_node.to - i_node.from == 1) {
       node->leaf = true;
       const auto tri = bvh->tris[bvh->triIndices[i_node.from]];
-      node->tri = {tri[0], tri[1], tri[2], tri[3], tri[4], tri[5], tri[6], tri[7], tri[8]};
+      node->tri = {tri[0], tri[1], tri[2], tri[3], tri[4],
+                   tri[5], tri[6], tri[7], tri[8]};
     } else {
       make_extended_tree_second(bvh, node.get(), i_node.from, i_node.to);
     }
   } else {
     node->leaf = false;
-    node->left_child = make_extended_tree_r(bvh, node.get(), bvh->leftChild(i_node.idx, i_node.depth));
-    node->right_child = make_extended_tree_r(bvh, node.get(), bvh->rightChild(i_node.idx, i_node.depth));
+    node->left_child = make_extended_tree_r(
+        bvh, node.get(), bvh->leftChild(i_node.idx, i_node.depth));
+    node->right_child = make_extended_tree_r(
+        bvh, node.get(), bvh->rightChild(i_node.idx, i_node.depth));
   }
 
   return std::move(node);
 }
 
-std::unique_ptr<ExNode> make_extended_tree(BVH* bvh){
+std::unique_ptr<ExNode> make_extended_tree(BVH *bvh) {
   std::unique_ptr<ExNode> root = std::make_unique<ExNode>();
   root->leaf = false;
   root->parent = nullptr;
-  root->left_child = make_extended_tree_r(bvh, root.get(), bvh->leftChild(bvh->nodes[0].idx, bvh->nodes[0].depth));
-  root->right_child = make_extended_tree_r(bvh, root.get(), bvh->rightChild(bvh->nodes[0].idx, bvh->nodes[0].depth));
-  return std::move(root);  
+  root->left_child = make_extended_tree_r(
+      bvh, root.get(), bvh->leftChild(bvh->nodes[0].idx, bvh->nodes[0].depth));
+  root->right_child = make_extended_tree_r(
+      bvh, root.get(), bvh->rightChild(bvh->nodes[0].idx, bvh->nodes[0].depth));
+  return std::move(root);
 }
 
-
-void* parse_bvh(BVH* bvh, uint64_t& rootidx){
+void *parse_bvh(BVH *bvh, uint64_t &rootidx) {
 
   std::vector<uint8_t> buff{};
 
@@ -347,24 +354,23 @@ void* parse_bvh(BVH* bvh, uint64_t& rootidx){
   process(root.get(), buff);
 
   rootidx = root->idx;
-  //std::cout << "root idx " << rootidx << std::endl;
+  // std::cout << "root idx " << rootidx << std::endl;
 
-  void* d_bvh;
-  CHK( hipMalloc(&d_bvh, buff.size()) );
-  CHK( hipMemcpy(d_bvh, buff.data(), buff.size(), hipMemcpyHostToDevice) );
+  void *d_bvh;
+  CHK(hipMalloc(&d_bvh, buff.size()));
+  CHK(hipMemcpy(d_bvh, buff.data(), buff.size(), hipMemcpyHostToDevice));
 
   return d_bvh;
-
 }
 
-void* parse_bvh2(BVH* bvh){
+void *parse_bvh2(BVH *bvh) {
 
   std::vector<uint8_t> buff{};
   int offset = 0;
   parse_bvh(bvh, bvh->nodes[0], buff, offset, InvalidValue);
 
   for (int i = 0; i < (int)buff.size(); i++) {
-    //if (i % 64 == 0) std::cout << '\n';
+    // if (i % 64 == 0) std::cout << '\n';
 
     int valor = static_cast<int>(buff[i]);
     std::string s = std::to_string(valor);
@@ -373,14 +379,14 @@ void* parse_bvh2(BVH* bvh){
     int padL = (ancho - len) / 2;
     int padR = ancho - len - padL;
 
-    ///std::cout << std::string(padL, ' ') << s << std::string(padR, ' ');
-    //std::cout << ' ';
-}
-  //std::cout << '\n';
-  
-  void* d_bvh;
-  CHK( hipMalloc(&d_bvh, buff.size()) );
-  CHK( hipMemcpy(d_bvh, buff.data(), buff.size(), hipMemcpyHostToDevice) );
+    /// std::cout << std::string(padL, ' ') << s << std::string(padR, ' ');
+    // std::cout << ' ';
+  }
+  // std::cout << '\n';
+
+  void *d_bvh;
+  CHK(hipMalloc(&d_bvh, buff.size()));
+  CHK(hipMemcpy(d_bvh, buff.data(), buff.size(), hipMemcpyHostToDevice));
 
   return d_bvh;
 }
@@ -389,25 +395,25 @@ void HIPBackend::set_tris(const Tris &tris) {
 
   m_tris = tris;
 
-  BVH* bvh = new BVH();
+  BVH *bvh = new BVH();
   bvh->triIndices = new int[tris.size()];
   bvh->tris = m_tris.data();
   bvh->build(&m_tris);
 
   m_dbvh = parse_bvh(bvh, m_rootidx);
   delete[] bvh->triIndices;
-  delete(bvh);
+  delete (bvh);
 }
-
 
 bool HIPBackend::intersect_tris(const Ray &ray) {
 
   bool *dHit;
   CHK(hipMalloc(&dHit, sizeof(bool)));
 
-  nearest_hit<<<1, 1>>>(m_dbvh, dHit,
-                     {ray.origin[0], ray.origin[1], ray.origin[2], 0},
-                     {ray.direction[0], ray.direction[1], ray.direction[2], 0}, 1000000000, m_rootidx);
+  nearest_hit<<<1, 1>>>(
+      m_dbvh, dHit, {ray.origin[0], ray.origin[1], ray.origin[2], 0},
+      {ray.direction[0], ray.direction[1], ray.direction[2], 0}, 1000000000,
+      m_rootidx);
   CHK(hipDeviceSynchronize());
   bool hv;
   CHK(hipMemcpy(&hv, dHit, sizeof(bool), hipMemcpyDeviceToHost));

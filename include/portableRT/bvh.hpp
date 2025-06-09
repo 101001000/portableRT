@@ -37,6 +37,7 @@ struct Hit {
   bool valid;
   Vector3 position;
   unsigned int triIdx;
+  float t;
 };
 
 struct BVHTri {

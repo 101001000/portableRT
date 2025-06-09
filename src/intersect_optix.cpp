@@ -62,15 +62,19 @@ std::string loadFile(const std::string &filename) {
   return std::string(std::istreambuf_iterator<char>(file), {});
 }
 
-struct Params {
+struct __align__(16) Params {
   OptixTraversableHandle handle;
-  float3 origin;
-  float3 direction;
-  int *result;
+  float4 *origins;
+  float4 *directions;
+  float *results;
 };
 
 static inline float3 toFloat3(const std::array<float, 3> &a) {
   return make_float3(a[0], a[1], a[2]);
+}
+
+static inline float4 toFloat4(const std::array<float, 3> &a) {
+  return make_float4(a[0], a[1], a[2], 0);
 }
 
 namespace portableRT {
@@ -223,18 +227,16 @@ void OptiXBackend::init() {
   }
 
   CUDA_CHECK(cudaStreamCreate(&m_stream));
-
-  CUDA_CHECK(cudaMalloc((void **)&m_d_res, sizeof(int)));
 }
 
 void OptiXBackend::shutdown() {
   CUDA_CHECK(cudaFree(reinterpret_cast<void *>(m_sbt.raygenRecord)));
   CUDA_CHECK(cudaFree(reinterpret_cast<void *>(m_sbt.missRecordBase)));
   CUDA_CHECK(cudaFree(reinterpret_cast<void *>(m_sbt.hitgroupRecordBase)));
+  CUDA_CHECK(cudaFree(reinterpret_cast<void *>(m_d_gas_output_buffer)));
   OPTIX_CHECK(optixProgramGroupDestroy(m_hitgroup_prog_group));
   OPTIX_CHECK(optixProgramGroupDestroy(m_miss_prog_group));
   OPTIX_CHECK(optixProgramGroupDestroy(m_raygen_prog_group));
-  CUDA_CHECK(cudaFree(reinterpret_cast<void *>(m_d_res)));
   CUDA_CHECK(cudaStreamDestroy(m_stream));
   OPTIX_CHECK(optixPipelineDestroy(m_pipeline));
   OPTIX_CHECK(optixModuleDestroy(m_module));
@@ -242,7 +244,7 @@ void OptiXBackend::shutdown() {
 }
 
 void OptiXBackend::set_tris(const Tris &tris) {
-  CUdeviceptr d_gas_output_buffer;
+
   {
     // Use default options for simplicity.  In a real use case we would want
     // to enable compaction, etc
@@ -279,56 +281,85 @@ void OptiXBackend::set_tris(const Tris &tris) {
     CUdeviceptr d_temp_buffer_gas;
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_temp_buffer_gas),
                           gas_buffer_sizes.tempSizeInBytes));
-    CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_gas_output_buffer),
+    CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&m_d_gas_output_buffer),
                           gas_buffer_sizes.outputSizeInBytes));
 
-    OPTIX_CHECK(optixAccelBuild(
-        m_context,
-        0, // CUDA stream
-        &accel_options, &triangle_input,
-        1, // num build inputs
-        d_temp_buffer_gas, gas_buffer_sizes.tempSizeInBytes,
-        d_gas_output_buffer, gas_buffer_sizes.outputSizeInBytes, &m_gas_handle,
-        nullptr, // emitted property list
-        0        // num emitted properties
-        ));
+    OPTIX_CHECK(
+        optixAccelBuild(m_context,
+                        0, // CUDA stream
+                        &accel_options, &triangle_input,
+                        1, // num build inputs
+                        d_temp_buffer_gas, gas_buffer_sizes.tempSizeInBytes,
+                        m_d_gas_output_buffer,
+                        gas_buffer_sizes.outputSizeInBytes, &m_gas_handle,
+                        nullptr, // emitted property list
+                        0        // num emitted properties
+                        ));
 
     // We can now free the scratch space buffer used during build and the
     // vertex inputs, since they are not needed by our trivial shading method
     CUDA_CHECK(cudaFree(reinterpret_cast<void *>(d_temp_buffer_gas)));
     CUDA_CHECK(cudaFree(reinterpret_cast<void *>(d_vertices)));
   }
-
-  { CUDA_CHECK(cudaFree(reinterpret_cast<void *>(d_gas_output_buffer))); }
 }
 
-bool OptiXBackend::intersect_tris(const Ray &ray) {
+std::vector<float> OptiXBackend::nearest_hits(const std::vector<Ray> &rays) {
 
-  int h_res = 0;
-  {
+  std::vector<float> hits;
+  hits.reserve(rays.size());
 
-    Params params;
-    params.handle = m_gas_handle;
-    params.origin = toFloat3(ray.origin);
-    params.direction = toFloat3(ray.direction);
-    params.result = reinterpret_cast<int *>(m_d_res);
+  CUdeviceptr d_res;
+  CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_res),
+                        sizeof(float) * rays.size()));
+  CUdeviceptr d_origins;
+  CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_origins),
+                        sizeof(float4) * rays.size()));
+  CUdeviceptr d_directions;
+  CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_directions),
+                        sizeof(float4) * rays.size()));
 
-    CUdeviceptr d_param;
-    CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_param), sizeof(Params)));
-    CUDA_CHECK(cudaMemcpy(reinterpret_cast<void *>(d_param), &params,
-                          sizeof(params), cudaMemcpyHostToDevice));
+  std::vector<float4> origins(rays.size());
+  std::vector<float4> directions(rays.size());
 
-    OPTIX_CHECK(optixLaunch(m_pipeline, m_stream, d_param, sizeof(Params),
-                            &m_sbt, 1, 1, 1));
-
-    CUDA_CHECK(cudaStreamSynchronize(m_stream));
-    CUDA_CHECK(cudaFree(reinterpret_cast<void *>(d_param)));
-
-    CUDA_CHECK(cudaMemcpy(&h_res, (void *)m_d_res, sizeof(int),
-                          cudaMemcpyDeviceToHost));
+  for (int i = 0; i < rays.size(); i++) {
+    origins[i] = toFloat4(rays[i].origin);
+    directions[i] = toFloat4(rays[i].direction);
   }
 
-  return h_res;
+  CUDA_CHECK(cudaMemcpy(reinterpret_cast<void *>(d_origins), origins.data(),
+                        sizeof(float3) * rays.size(), cudaMemcpyHostToDevice));
+  CUDA_CHECK(cudaMemcpy(reinterpret_cast<void *>(d_directions),
+                        directions.data(), sizeof(float3) * rays.size(),
+                        cudaMemcpyHostToDevice));
+
+  Params params;
+  params.handle = m_gas_handle;
+  params.origins = reinterpret_cast<float4 *>(d_origins);
+  params.directions = reinterpret_cast<float4 *>(d_directions);
+  params.results = reinterpret_cast<float *>(d_res);
+
+  CUdeviceptr d_params;
+  CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_params), sizeof(Params)));
+  CUDA_CHECK(cudaMemcpy(reinterpret_cast<void *>(d_params), &params,
+                        sizeof(Params), cudaMemcpyHostToDevice));
+  OPTIX_CHECK(optixLaunch(m_pipeline, m_stream, d_params, sizeof(Params),
+                          &m_sbt, rays.size(), 1, 1));
+
+  CUDA_CHECK(cudaStreamSynchronize(m_stream));
+
+  float *h_res = new float[rays.size()];
+  CUDA_CHECK(cudaMemcpy(h_res, (void *)d_res, sizeof(float) * rays.size(),
+                        cudaMemcpyDeviceToHost));
+
+  hits.insert(hits.end(), h_res, h_res + rays.size());
+  delete[] h_res;
+
+  CUDA_CHECK(cudaFree(reinterpret_cast<void *>(d_params)));
+  CUDA_CHECK(cudaFree(reinterpret_cast<void *>(d_res)));
+  CUDA_CHECK(cudaFree(reinterpret_cast<void *>(d_origins)));
+  CUDA_CHECK(cudaFree(reinterpret_cast<void *>(d_directions)));
+
+  return hits;
 }
 
 bool OptiXBackend::is_available() const {

@@ -1,7 +1,7 @@
 #pragma once
 #include "backend.hpp"
-#include "core.hpp"
 #include "bvh.hpp"
+#include "core.hpp"
 
 namespace portableRT {
 
@@ -18,7 +18,7 @@ public:
 private:
   Tris m_tris;
   uint64_t m_rootidx;
-  void* m_dbvh;
+  void *m_dbvh;
 };
 
 static HIPBackend hip_backend;

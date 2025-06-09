@@ -31,7 +31,7 @@ inline float intersect_tri(const std::array<float, 9> &vertices,
 
   float det = edge1[0] * pvec[0] + edge1[1] * pvec[1] + edge1[2] * pvec[2];
   if (det == 0.0f)
-    return std::numeric_limits<float>::quiet_NaN();
+    return std::numeric_limits<float>::infinity();
 
   float invDet = 1.0f / det;
 
@@ -41,7 +41,7 @@ inline float intersect_tri(const std::array<float, 9> &vertices,
   float u =
       (tvec[0] * pvec[0] + tvec[1] * pvec[1] + tvec[2] * pvec[2]) * invDet;
   if (u < 0.0f || u > 1.0f)
-    return std::numeric_limits<float>::quiet_NaN();
+    return std::numeric_limits<float>::infinity();
 
   auto qvec = std::array<float, 3>{tvec[1] * edge1[2] - tvec[2] * edge1[1],
                                    tvec[2] * edge1[0] - tvec[0] * edge1[2],
@@ -51,7 +51,7 @@ inline float intersect_tri(const std::array<float, 9> &vertices,
              ray.direction[2] * qvec[2]) *
             invDet;
   if (v < 0.0f || u + v > 1.0f)
-    return std::numeric_limits<float>::quiet_NaN();
+    return std::numeric_limits<float>::infinity();
 
   float t =
       (edge2[0] * qvec[0] + edge2[1] * qvec[1] + edge2[2] * qvec[2]) * invDet;
