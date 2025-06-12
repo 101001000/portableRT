@@ -5,3 +5,5 @@ cache
 *.json
 *.txt
 *.png
+*.csv
+!common/bunny.png

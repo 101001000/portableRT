@@ -5,12 +5,16 @@
 #include <portableRT/portableRT.hpp>
 #include <string>
 #include <unistd.h>
+#include <fstream>
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "../common/tiny_obj_loader.h"
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "../common/stb_image_write.h"
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "../common/stb_image.h"
 
 std::string get_executable_path() {
   char result[1024];
@@ -82,33 +86,11 @@ int main() {
     }
   }
 
-  std::cout << "Select backend: " << std::endl;
-  int i = 0;
-  for (auto backend : portableRT::available_backends()) {
-    std::cout << i++ << " " << backend->name() << std::endl;
-  }
-
-  int sel_backend = 0;
-  std::cin >> sel_backend;
-
-  portableRT::select_backend(portableRT::available_backends()[sel_backend]);
+  std::vector<portableRT::Ray> rays;
 
   float camera_dist = 0.5f;
   float sensor_size = 0.05f;
   float sensor_dist = 0.05f;
-
-  std::vector<unsigned char> image(width * height);
-
-  auto bvh_start = std::chrono::high_resolution_clock::now();
-  portableRT::selected_backend->set_tris(tris);
-  auto bvh_end = std::chrono::high_resolution_clock::now();
-  auto bvh_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-      bvh_end - bvh_start);
-
-  std::cout << "BVH building time: " << bvh_duration.count() << " ms"
-            << std::endl;
-
-  std::vector<portableRT::Ray> rays;
 
   for (int y = height - 1; y >= 0; --y) {
     for (int x = 0; x < width; ++x) {
@@ -122,36 +104,54 @@ int main() {
       portableRT::Ray ray;
       ray.origin = camera_pos;
       ray.direction = {sensor_pos[0] - camera_pos[0],
-                       sensor_pos[1] - camera_pos[1],
-                       sensor_pos[2] - camera_pos[2]};
+                      sensor_pos[1] - camera_pos[1],
+                      sensor_pos[2] - camera_pos[2]};
       float length =
           sqrt(sensor_pos[0] * sensor_pos[0] + sensor_pos[1] * sensor_pos[1] +
-               sensor_pos[2] * sensor_pos[2]);
+              sensor_pos[2] * sensor_pos[2]);
 
       ray.direction[0] /= length;
       ray.direction[1] /= length;
       ray.direction[2] /= length;
 
       rays.push_back(ray);
+      }
+  }
+
+
+  int v_width, v_height, v_channels;
+  unsigned char* v_data = stbi_load((get_executable_dir() + "/common/bunny.png").c_str(), &v_width, &v_height, &v_channels, 0);
+
+  std::ofstream file("results.csv");
+  file << "Backend,Validation,BVH Build Time,BVH Traverse Time\n";
+
+  for(auto backend : portableRT::available_backends()) {
+
+    std::cout << "Testing " << backend->name() << std::endl;
+
+    portableRT::select_backend(backend);
+    backend->set_tris(tris);
+
+    auto bvh_start = std::chrono::high_resolution_clock::now();
+    portableRT::selected_backend->set_tris(tris);
+    auto bvh_end = std::chrono::high_resolution_clock::now();
+    auto bvh_duration = std::chrono::duration_cast<std::chrono::microseconds>(
+        bvh_end - bvh_start);
+
+    auto traverse_start = std::chrono::high_resolution_clock::now();
+    std::vector<float> hits = portableRT::nearest_hits(rays);
+    auto traverse_end = std::chrono::high_resolution_clock::now();
+    auto traverse_duration =
+        std::chrono::duration_cast<std::chrono::microseconds>(traverse_end - traverse_start);
+
+    bool validation = true;
+    for (size_t i = 0; i < hits.size(); i++) {
+        validation &= (hits[i] == std::numeric_limits<float>::infinity() ? 0 : 255) == v_data[i];
     }
+
+    file << backend->name() << "," << validation << "," << bvh_duration.count() / 1000.0f << "," << traverse_duration.count() / 1000.0f << "\n";
   }
-
-  auto start = std::chrono::high_resolution_clock::now();
-  std::vector<float> hits = portableRT::nearest_hits(rays);
-  auto end = std::chrono::high_resolution_clock::now();
-
-  auto duration =
-      std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-
-  std::cout << "Execution time: " << duration.count() << " ms" << std::endl;
-  std::cout << static_cast<int>((width * height) / (duration.count() / 1000.0f))
-            << "rays/s" << std::endl;
-
-  for (size_t i = 0; i < hits.size(); i++) {
-    image[i] = hits[i] == std::numeric_limits<float>::infinity() ? 0 : 255;
-  }
-
-  stbi_write_png("bunny_output.png", width, height, 1, image.data(), width);
+  stbi_image_free(v_data);
 
   return 0;
 }
