@@ -93,7 +93,7 @@ int main() {
 
   portableRT::select_backend(portableRT::available_backends()[sel_backend]);
 
-  float camera_dist = 0.5f;
+  float camera_dist = 0.3f;
   float sensor_size = 0.05f;
   float sensor_dist = 0.05f;
 
@@ -116,7 +116,7 @@ int main() {
       float sx = sensor_size * (static_cast<float>(x) / width - 0.5);
       float sy = sensor_size * (static_cast<float>(y) / height - 0.5);
 
-      std::array<float, 3> camera_pos{0, 0, -camera_dist};
+      std::array<float, 3> camera_pos{0, -0.02, -camera_dist};
       std::array<float, 3> sensor_pos{sx, sy, -camera_dist + sensor_dist};
 
       portableRT::Ray ray;
