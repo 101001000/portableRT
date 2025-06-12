@@ -154,8 +154,8 @@ __global__ void nearest_hit(void *bvh, float *out, portableRT::Ray *rays,
     auto res = __builtin_amdgcn_image_bvh_intersect_ray_l(
         stack[stack_ptr], 100, ray_o.data, ray_d.data, ray_id.data, desc.data);
 
-    // printf("Pop %lu, type: %u, res: %d, %d, %d, %d\n", stack[stack_ptr],
-    // type, res[0], res[1], res[2], res[3]);
+    //printf("Pop %lu, type: %u, res: %d, %d, %d, %d\n", stack[stack_ptr],
+    //       type, res[0], res[1], res[2], res[3]);
 
     stack_ptr--;
 
@@ -163,11 +163,12 @@ __global__ void nearest_hit(void *bvh, float *out, portableRT::Ray *rays,
       for (int i = 0; i < 4; i++) {
         if (res[i] == InvalidValue)
           break;
-        // printf("Push %d\n", res[i]);
+        //printf("Push %d\n", res[i]);
         stack[++stack_ptr] = res[i];
       }
     } else {
-      hit = std::min(hit, float(res[3]));
+      float t = __int_as_float(res[0]) / __int_as_float(res[1]);
+      hit = std::min(hit, t);
     }
   }
 
@@ -305,7 +306,9 @@ void process(ExNode *node, std::vector<uint8_t> &data) {
 }
 
 void make_extended_tree_second(BVH *bvh, ExNode *node, int from, int to) {
-  if (to - from <= 1) {
+  if (to - from <= 0) {
+    node->leaf = true;
+  } else if (to - from <= 1) {
     node->leaf = true;
     const auto tri = bvh->tris[bvh->triIndices[from]];
     node->tri = {tri[0], tri[1], tri[2], tri[3], tri[4],
@@ -324,7 +327,6 @@ void make_extended_tree_second(BVH *bvh, ExNode *node, int from, int to) {
 
 std::unique_ptr<ExNode> make_extended_tree_r(BVH *bvh, ExNode *parent,
                                              Node i_node) {
-
   std::unique_ptr<ExNode> node = std::make_unique<ExNode>();
   node->parent = parent;
 
