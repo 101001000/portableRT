@@ -469,4 +469,17 @@ bool HIPBackend::is_available() const {
   return false;
 }
 
+std::string HIPBackend::device_name() const {
+  int device = 0;
+  hipDeviceProp_t props{};
+  if (hipGetDevice(&device) != hipSuccess)
+    return "unsupported";
+
+  if (hipGetDeviceProperties(&props, device) != hipSuccess)
+    return "unsupported";
+
+  return std::string(props.name);
+}
+
+
 } // namespace portableRT

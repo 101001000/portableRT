@@ -370,4 +370,16 @@ bool OptiXBackend::is_available() const {
   return true;
 }
 
+std::string OptiXBackend::device_name() const {
+  int device = 0;
+  cudaDeviceProp props{};
+  if (cudaGetDevice(&device) != cudaSuccess)
+    return "unsupported";
+
+  if (cudaGetDeviceProperties(&props, device) != cudaSuccess)
+    return "unsupported";
+
+  return props.name;
+}
+
 } // namespace portableRT

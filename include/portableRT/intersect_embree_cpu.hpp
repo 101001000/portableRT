@@ -18,6 +18,7 @@ public:
   void init() override;
   void shutdown() override;
   void set_tris(const Tris &tris) override;
+  std::string device_name() const override;
 
 private:
   RTCDevice m_device;

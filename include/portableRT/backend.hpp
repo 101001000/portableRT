@@ -27,6 +27,7 @@ public:
   virtual bool is_available() const = 0;
   virtual void init() = 0;
   virtual void shutdown() = 0;
+  virtual std::string device_name() const = 0;
 
   NearestHitsDispatchFn nearest_hits_;
   void *self_;

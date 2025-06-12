@@ -88,4 +88,9 @@ bool SYCLBackend::is_available() const {
     return false;
   }
 }
+
+std::string SYCLBackend::device_name() const {
+  return m_impl->m_dev.get_info<sycl::info::device::name>();
+}
+
 } // namespace portableRT

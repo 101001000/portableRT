@@ -123,7 +123,7 @@ int main() {
   unsigned char* v_data = stbi_load((get_executable_dir() + "/common/bunny.png").c_str(), &v_width, &v_height, &v_channels, 0);
 
   std::ofstream file("results.csv");
-  file << "Backend,Validation,BVH Build Time,BVH Traverse Time\n";
+  file << "Backend,Device,Validation,BVH Build Time,BVH Traverse Time\n";
 
   for(auto backend : portableRT::available_backends()) {
 
@@ -149,7 +149,7 @@ int main() {
         validation &= (hits[i] == std::numeric_limits<float>::infinity() ? 0 : 255) == v_data[i];
     }
 
-    file << backend->name() << "," << validation << "," << bvh_duration.count() / 1000.0f << "," << traverse_duration.count() / 1000.0f << "\n";
+    file << backend->name() << "," << backend->device_name() << "," << validation << "," << bvh_duration.count() / 1000.0f << "," << traverse_duration.count() / 1000.0f << "\n";
   }
   stbi_image_free(v_data);
 

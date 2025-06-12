@@ -255,4 +255,8 @@ void EmbreeSYCLBackend::shutdown() {
   m_impl.reset();
 }
 
+std::string EmbreeSYCLBackend::device_name() const {
+  return m_impl->m_dev.get_info<sycl::info::device::name>();
+}
+
 } // namespace portableRT
