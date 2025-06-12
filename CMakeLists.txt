@@ -104,6 +104,7 @@ if(USE_EMBREE_CPU AND NOT USE_EMBREE_SYCL)
     "${embree_ROOT}/include"    
     )
     target_sources(portableRT PUBLIC src/intersect_embree_cpu.cpp)
+    target_link_libraries(portableRT PUBLIC embree) 
 else()
     message(STATUS "Building without Embree-cpu")
 endif()
