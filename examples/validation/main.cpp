@@ -1,11 +1,11 @@
 #include <array>
 #include <chrono>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <portableRT/portableRT.hpp>
 #include <string>
 #include <unistd.h>
-#include <fstream>
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "../common/tiny_obj_loader.h"
@@ -104,28 +104,29 @@ int main() {
       portableRT::Ray ray;
       ray.origin = camera_pos;
       ray.direction = {sensor_pos[0] - camera_pos[0],
-                      sensor_pos[1] - camera_pos[1],
-                      sensor_pos[2] - camera_pos[2]};
+                       sensor_pos[1] - camera_pos[1],
+                       sensor_pos[2] - camera_pos[2]};
       float length =
           sqrt(sensor_pos[0] * sensor_pos[0] + sensor_pos[1] * sensor_pos[1] +
-              sensor_pos[2] * sensor_pos[2]);
+               sensor_pos[2] * sensor_pos[2]);
 
       ray.direction[0] /= length;
       ray.direction[1] /= length;
       ray.direction[2] /= length;
 
       rays.push_back(ray);
-      }
+    }
   }
 
-
   int v_width, v_height, v_channels;
-  unsigned char* v_data = stbi_load((get_executable_dir() + "/common/bunny.png").c_str(), &v_width, &v_height, &v_channels, 0);
+  unsigned char *v_data =
+      stbi_load((get_executable_dir() + "/common/bunny.png").c_str(), &v_width,
+                &v_height, &v_channels, 0);
 
   std::ofstream file("results.csv");
   file << "Backend,Device,Validation,BVH Build Time,BVH Traverse Time\n";
 
-  for(auto backend : portableRT::available_backends()) {
+  for (auto backend : portableRT::available_backends()) {
 
     std::cout << "Testing " << backend->name() << std::endl;
 
@@ -142,14 +143,19 @@ int main() {
     std::vector<float> hits = portableRT::nearest_hits(rays);
     auto traverse_end = std::chrono::high_resolution_clock::now();
     auto traverse_duration =
-        std::chrono::duration_cast<std::chrono::microseconds>(traverse_end - traverse_start);
+        std::chrono::duration_cast<std::chrono::microseconds>(traverse_end -
+                                                              traverse_start);
 
     bool validation = true;
     for (size_t i = 0; i < hits.size(); i++) {
-        validation &= (hits[i] == std::numeric_limits<float>::infinity() ? 0 : 255) == v_data[i];
+      validation &=
+          (hits[i] == std::numeric_limits<float>::infinity() ? 0 : 255) ==
+          v_data[i];
     }
 
-    file << backend->name() << "," << backend->device_name() << "," << validation << "," << bvh_duration.count() / 1000.0f << "," << traverse_duration.count() / 1000.0f << "\n";
+    file << backend->name() << "," << backend->device_name() << ","
+         << validation << "," << bvh_duration.count() / 1000.0f << ","
+         << traverse_duration.count() / 1000.0f << "\n";
   }
   stbi_image_free(v_data);
 

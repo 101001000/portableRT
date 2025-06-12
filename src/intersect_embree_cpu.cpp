@@ -1,7 +1,7 @@
 #include <cmath>
 #include <cstdio>
-#include <limits>
 #include <fstream>
+#include <limits>
 
 #include "../include/portableRT/intersect_embree_cpu.hpp"
 
@@ -115,13 +115,13 @@ std::string EmbreeCPUBackend::device_name() const {
   std::ifstream cpuinfo("/proc/cpuinfo");
   std::string line;
   while (std::getline(cpuinfo, line)) {
-      if (line.rfind("model name", 0) == 0) {      
-          auto pos = line.find(':');
-          if (pos != std::string::npos) {
-              size_t start = line.find_first_not_of(" \t", pos + 1);
-              return line.substr(start);
-          }
+    if (line.rfind("model name", 0) == 0) {
+      auto pos = line.find(':');
+      if (pos != std::string::npos) {
+        size_t start = line.find_first_not_of(" \t", pos + 1);
+        return line.substr(start);
       }
+    }
   }
   return "unsupported";
 }

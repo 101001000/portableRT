@@ -154,8 +154,8 @@ __global__ void nearest_hit(void *bvh, float *out, portableRT::Ray *rays,
     auto res = __builtin_amdgcn_image_bvh_intersect_ray_l(
         stack[stack_ptr], 100, ray_o.data, ray_d.data, ray_id.data, desc.data);
 
-    //printf("Pop %lu, type: %u, res: %d, %d, %d, %d\n", stack[stack_ptr],
-    //       type, res[0], res[1], res[2], res[3]);
+    // printf("Pop %lu, type: %u, res: %d, %d, %d, %d\n", stack[stack_ptr],
+    //        type, res[0], res[1], res[2], res[3]);
 
     stack_ptr--;
 
@@ -163,7 +163,7 @@ __global__ void nearest_hit(void *bvh, float *out, portableRT::Ray *rays,
       for (int i = 0; i < 4; i++) {
         if (res[i] == InvalidValue)
           break;
-        //printf("Push %d\n", res[i]);
+        // printf("Push %d\n", res[i]);
         stack[++stack_ptr] = res[i];
       }
     } else {
@@ -480,6 +480,5 @@ std::string HIPBackend::device_name() const {
 
   return std::string(props.name);
 }
-
 
 } // namespace portableRT

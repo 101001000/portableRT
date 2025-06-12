@@ -124,9 +124,9 @@ int main() {
       ray.direction = {sensor_pos[0] - camera_pos[0],
                        sensor_pos[1] - camera_pos[1],
                        sensor_pos[2] - camera_pos[2]};
-      float length =
-          sqrt(ray.direction[0] * ray.direction[0] + ray.direction[1] * ray.direction[1] +
-            ray.direction[2] * ray.direction[2]);
+      float length = sqrt(ray.direction[0] * ray.direction[0] +
+                          ray.direction[1] * ray.direction[1] +
+                          ray.direction[2] * ray.direction[2]);
 
       ray.direction[0] /= length;
       ray.direction[1] /= length;
