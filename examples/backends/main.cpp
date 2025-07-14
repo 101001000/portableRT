@@ -1,8 +1,11 @@
 #include <array>
 #include <iostream>
 #include <portableRT/portableRT.hpp>
+#include <portableRT/version.hpp>
 
 int main() {
+
+  std::cout << "portableRT version: " << PORTABLERT_VERSION << std::endl;
 
   std::cout << "Printing all compiled backends: " << std::endl;
   for (auto backend : portableRT::all_backends()) {

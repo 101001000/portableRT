@@ -1,5 +1,11 @@
 cmake_minimum_required(VERSION 3.22)
-project(portableRT)
+project(portableRT VERSION 0.3.1)
+
+configure_file(
+  version.hpp.in
+  ${CMAKE_BINARY_DIR}/include/portableRT/version.hpp
+  @ONLY
+)
 
 option(USE_OPTIX "Enable OptiX backend" OFF)
 option(USE_HIP "Enable HIP backend" OFF)
@@ -9,6 +15,8 @@ option(USE_SYCL "Enable SYCL backend" OFF)
 
 # All the files that don't require an specific compiler
 add_library(portableRT src/portableRT.cpp src/intersect_cpu.cpp src/bvh.cpp)
+
+target_include_directories(portableRT PUBLIC ${CMAKE_BINARY_DIR}/include)
 
 # OPTIX
 if(USE_OPTIX)
