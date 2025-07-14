@@ -10,7 +10,8 @@
 
 portableRT is a C++ library that enables your application to perform ray tracing using all available hardware through a single API. On CPUs, it uses Embree. On GPUs, the user can choose between a general GPGPU approach, ideal for older or compute-focused GPUs without dedicated ray tracing units, or make use of the hardware-accelerated ray tracing units (when available)
 
-This first version is extremely simple and focuses solely on intersecting multiples ray with a triangle structure using all the available backends. It currently works with all the available GPUs Ray tracing cores.
+This first release is intentionally minimal. It performs only ray triangle intersections, yet it does so through every supported backend. On GPUs it uses dedicated ray tracing cores or general GPGPU if desired. On the CPU it runs in parallel with `std::thread` for both the Embree and generic CPU backends, while the SYCL backend relies on SYCL’s own parallel execution.
+
 
 
 ## Recommended Backends by Device Type
@@ -20,8 +21,8 @@ This first version is extremely simple and focuses solely on intersecting multip
 | NVIDIA GPUs with RT cores                        | `OptiX`                  |
 | AMD GPUs with Ray Accelerators                   | `HIP`                    |
 | Intel GPUs with Ray Tracing Units (RTUs)         | `Embree SYCL`            |
-| x86_64 CPUs (Intel/AMD)                          | `Embree CPU`             |
-| Non-x86 CPUs (e.g. ARM, RISC-V)                  | `CPU`                    |
+| CPUs                                             | `Embree CPU`             |
+| CPUs without embree installation                 | `CPU`                    |
 | GPUs without dedicated ray tracing units (any)   | `SYCL`                   |
 
 
@@ -33,6 +34,9 @@ cd portableRT
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
+
+The default configuration builds only the reference CPU backend for testing purposes.  
+To compile support for other devices, pass the corresponding CMake options mentioned below.
 
 ### Optional Back‑Ends
 

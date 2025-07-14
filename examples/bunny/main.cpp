@@ -26,8 +26,8 @@ std::string get_executable_dir() {
 
 int main() {
 
-  constexpr size_t width = 1024;
-  constexpr size_t height = 1024;
+  constexpr size_t width = 4096;
+  constexpr size_t height = 4096;
 
   std::string inputfile = get_executable_dir() + "/common/bunny.obj";
   tinyobj::ObjReaderConfig reader_config;

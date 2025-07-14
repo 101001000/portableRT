@@ -2,6 +2,7 @@
 #include <cstdio>
 #include <fstream>
 #include <limits>
+#include <thread>
 
 #include "../include/portableRT/intersect_embree_cpu.hpp"
 
@@ -72,17 +73,40 @@ void EmbreeCPUBackend::set_tris(const Tris &tris) {
   rtcCommitScene(m_scene);
 }
 
+void check_hit(int i, RTCScene scene, const std::vector<Ray> &rays, std::vector<float> &hits, int N){
+  for(int r = 0; r < N; r++){
+    float t = castRay(scene, rays[i + r].origin[0], rays[i + r].origin[1], rays[i + r].origin[2],
+                      rays[i + r].direction[0], rays[i + r].direction[1], rays[i + r].direction[2]);
+    hits[i + r] = t;
+  }
+}
+
 std::vector<float>
 EmbreeCPUBackend::nearest_hits(const std::vector<Ray> &rays) {
 
   std::vector<float> hits;
-  hits.reserve(rays.size());
+  hits.resize(rays.size());
 
-  for (const auto ray : rays) {
-    float t = castRay(m_scene, ray.origin[0], ray.origin[1], ray.origin[2],
-                      ray.direction[0], ray.direction[1], ray.direction[2]);
-    hits.push_back(t);
-  }
+  clear_affinity();
+
+  unsigned n = std::thread::hardware_concurrency();
+  std::vector<std::thread> threads;
+  threads.reserve(n);
+
+
+  int rays_per_thread = rays.size() / n;
+
+  for (unsigned i = 0; i < n; ++i){
+    threads.emplace_back(check_hit,
+                         i * rays_per_thread,
+                         m_scene,
+                         std::cref(rays), 
+                         std::ref(hits), rays_per_thread);  
+    }
+
+  for (auto &thread : threads) thread.join();
+
+  check_hit(n * rays_per_thread, m_scene, rays, hits, rays.size() % n);
 
   return hits;
 }

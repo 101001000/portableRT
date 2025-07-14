@@ -1,17 +1,43 @@
 #include "../include/portableRT/intersect_cpu.hpp"
 #include <array>
 #include <fstream>
+#include <thread>
+#include <functional>
 
 namespace portableRT {
 
-std::vector<float> CPUBackend::nearest_hits(const std::vector<Ray> &rays) {
-  std::vector<float> hits(rays.size());
-  for (size_t i = 0; i < rays.size(); i++) {
+void check_hit(int i, BVH *m_bvh, const std::vector<Ray> &rays, std::vector<float> &hits, int N){
+  for(int r = 0; r < N; r++){
     Hit hit;
     hit.valid = false;
-    m_bvh->transverse(rays[i], hit);
-    hits[i] = hit.valid ? hit.t : std::numeric_limits<float>::infinity();
+    m_bvh->transverse(rays[i + r], hit);
+    hits[i + r] = hit.valid ? hit.t : std::numeric_limits<float>::infinity();
   }
+}
+
+std::vector<float> CPUBackend::nearest_hits(const std::vector<Ray> &rays) {
+  std::vector<float> hits(rays.size());
+
+  clear_affinity();
+
+  unsigned n = std::thread::hardware_concurrency();
+  std::vector<std::thread> threads;
+  threads.reserve(n);
+
+  int rays_per_thread = rays.size() / n;
+
+  for (unsigned i = 0; i < n; ++i){
+    threads.emplace_back(check_hit,
+                         i * rays_per_thread,
+                         m_bvh,
+                         std::cref(rays), 
+                         std::ref(hits), rays_per_thread);  
+    }
+
+  for (auto &thread : threads) thread.join();
+
+  check_hit(n * rays_per_thread, m_bvh, rays, hits, rays.size() % n);
+
   return hits;
 }
 
