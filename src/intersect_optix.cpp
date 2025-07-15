@@ -327,9 +327,9 @@ std::vector<float> OptiXBackend::nearest_hits(const std::vector<Ray> &rays) {
   }
 
   CUDA_CHECK(cudaMemcpy(reinterpret_cast<void *>(d_origins), origins.data(),
-                        sizeof(float3) * rays.size(), cudaMemcpyHostToDevice));
+                        sizeof(float4) * rays.size(), cudaMemcpyHostToDevice));
   CUDA_CHECK(cudaMemcpy(reinterpret_cast<void *>(d_directions),
-                        directions.data(), sizeof(float3) * rays.size(),
+                        directions.data(), sizeof(float4) * rays.size(),
                         cudaMemcpyHostToDevice));
 
   Params params;
