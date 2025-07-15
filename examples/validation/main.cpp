@@ -8,25 +8,15 @@
 #include <unistd.h>
 
 #define TINYOBJLOADER_IMPLEMENTATION
-#include "../common/tiny_obj_loader.h"
+#include <tiny_obj_loader.h>
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "../common/stb_image_write.h"
+#include <stb_image_write.h>
 
 #define STB_IMAGE_IMPLEMENTATION
-#include "../common/stb_image.h"
+#include <stb_image.h>
 
-std::string get_executable_path() {
-  char result[1024];
-  ssize_t count = readlink("/proc/self/exe", result, 1024);
-  return std::string(result, (count > 0) ? count : 0);
-}
-
-std::string get_executable_dir() {
-  std::string full_path = get_executable_path();
-  size_t found = full_path.find_last_of("/\\");
-  return full_path.substr(0, found);
-}
+#include "../common/util.h"
 
 int main() {
 
