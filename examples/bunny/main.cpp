@@ -127,7 +127,7 @@ int main() {
   }
 
   auto start = std::chrono::high_resolution_clock::now();
-  std::vector<float> hits = portableRT::nearest_hits(rays);
+  std::vector<portableRT::HitReg> hits = portableRT::nearest_hits(rays);
   auto end = std::chrono::high_resolution_clock::now();
 
   auto duration =
@@ -138,7 +138,7 @@ int main() {
             << "rays/s" << std::endl;
 
   for (size_t i = 0; i < hits.size(); i++) {
-    image[i] = hits[i] == std::numeric_limits<float>::infinity() ? 0 : 255;
+    image[i] = hits[i].t == std::numeric_limits<float>::infinity() ? 0 : 255;
   }
 
   stbi_write_png("bunny_output.png", width, height, 1, image.data(), width);

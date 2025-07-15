@@ -130,7 +130,7 @@ int main() {
         bvh_end - bvh_start);
 
     auto traverse_start = std::chrono::high_resolution_clock::now();
-    std::vector<float> hits = portableRT::nearest_hits(rays);
+    std::vector<portableRT::HitReg> hits = portableRT::nearest_hits(rays);
     auto traverse_end = std::chrono::high_resolution_clock::now();
     auto traverse_duration =
         std::chrono::duration_cast<std::chrono::microseconds>(traverse_end -
@@ -139,7 +139,7 @@ int main() {
     bool validation = true;
     for (size_t i = 0; i < hits.size(); i++) {
       validation &=
-          (hits[i] == std::numeric_limits<float>::infinity() ? 0 : 255) ==
+          (hits[i].t == std::numeric_limits<float>::infinity() ? 0 : 255) ==
           v_data[i];
     }
 

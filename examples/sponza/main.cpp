@@ -8,11 +8,40 @@
 
 #include "../common/util.h"
 
+float lambert_shade(const portableRT::Tri& tri, const portableRT::Ray& ray){
+    std::array<float, 3> v1 = {tri[0], tri[1], tri[2]};
+    std::array<float, 3> v2 = {tri[3], tri[4], tri[5]};
+    std::array<float, 3> v3 = {tri[6], tri[7], tri[8]};
+    
+    std::array<float,3> e1 = { v2[0]-v1[0], v2[1]-v1[1], v2[2]-v1[2] };
+    std::array<float,3> e2 = { v3[0]-v1[0], v3[1]-v1[1], v3[2]-v1[2] };
+
+    std::array<float,3> N = {
+        e1[1]*e2[2] - e1[2]*e2[1],
+        e1[2]*e2[0] - e1[0]*e2[2],
+        e1[0]*e2[1] - e1[1]*e2[0]
+    };
+
+    float lenN = std::sqrt(
+        N[0]*N[0] +
+        N[1]*N[1] +
+        N[2]*N[2]);
+    
+    if(fabs(lenN) > 0.001){
+        N[0] /= lenN;
+        N[1] /= lenN;
+        N[2] /= lenN;
+    }
+
+    float dotNV = N[0]*-ray.direction[0] + N[1]*-ray.direction[1] + N[2]*-ray.direction[2];
+    return std::max(0.0f, std::min(dotNV, 1.0f));
+}
+
 int main(int argc, char** argv){
     cgltf_options options = {};
     cgltf_data* data = NULL;
     cgltf_result result = cgltf_parse_file(&options, (get_executable_dir() + std::string("/assets/Sponza/Sponza.gltf")).c_str(), &data);
-    cgltf_load_buffers(&options, data, (get_executable_dir() + "/common/Sponza/Sponza.gltf").c_str());
+    cgltf_load_buffers(&options, data, (get_executable_dir() + "/assets/Sponza/Sponza.gltf").c_str());
     
     std::vector<std::array<float, 9>> tris;
 
@@ -76,8 +105,8 @@ int main(int argc, char** argv){
         cgltf_free(data);
     }
 
-    constexpr size_t width = 512;
-    constexpr size_t height = 512;   
+    constexpr size_t width = 64;
+    constexpr size_t height = 64;   
 
     std::cout << "Select backend: " << std::endl;
     int i = 0;
@@ -115,12 +144,12 @@ int main(int argc, char** argv){
     SDL_Window  *win = SDL_CreateWindow("RT", SDL_WINDOWPOS_CENTERED,
                                         SDL_WINDOWPOS_CENTERED, width, height, 0);
     SDL_Renderer *ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
-    SDL_Texture  *tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_RGBA8888,
+    SDL_Texture  *tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ABGR8888,
                                           SDL_TEXTUREACCESS_STREAMING, width, height);
 
 
     std::array<float, 3> camera_pos{288, 150, -50};
-    float camera_vel = 100.0f;
+    float camera_vel = 10.0f;
     float camera_angle = -1.58;
     float camera_wvel = 0.05f;
 
@@ -181,8 +210,8 @@ int main(int argc, char** argv){
             float ca = std::cos(camera_angle);
             float sa = std::sin(camera_angle);
 
-            float dx =  ca * sx + sa * sensor_dist;   // X mundial
-            float dz = -sa * sx + ca * sensor_dist;   // Z mundial
+            float dx =  ca * sx + sa * sensor_dist;  
+            float dz = -sa * sx + ca * sensor_dist;
 
             std::array<float,3> sensor_pos{
                 camera_pos[0] + dx,
@@ -209,16 +238,24 @@ int main(int argc, char** argv){
         }
         
         auto rt_start = std::chrono::high_resolution_clock::now();
-        std::vector<float> hits = portableRT::nearest_hits(rays);
+        std::vector<portableRT::HitReg> hits = portableRT::nearest_hits(rays);
         auto rt_end = std::chrono::high_resolution_clock::now();
 
         for (size_t i = 0; i < hits.size(); i++) {
-            bool hit = hits[i] != std::numeric_limits<float>::infinity();
-            float color = hit ? 100000 * 255.0/(hits[i] * hits[i]) : 0;
-            pixels[i*4] = color;
-            pixels[i*4+1] = color;
-            pixels[i*4+2] = color;
-            pixels[i*4+3] = color;
+            bool hit = hits[i].t != std::numeric_limits<float>::infinity();
+            if(!hit){
+                pixels[i*4+0] = 0;
+                pixels[i*4+1] = 0;
+                pixels[i*4+2] = 0;
+                pixels[i*4+3] = 255;
+                continue;
+            } else{
+                float color = 255 * lambert_shade(tris[hits[i].primitive_id], rays[i]);
+                pixels[i*4+0] = color;
+                pixels[i*4+1] = color;
+                pixels[i*4+2] = color;
+                pixels[i*4+3] = 255;
+            }
         }
 
 

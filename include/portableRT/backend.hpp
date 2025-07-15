@@ -8,7 +8,7 @@
 
 namespace portableRT {
 
-using NearestHitsDispatchFn = std::vector<float> (*)(void *,
+using NearestHitsDispatchFn = std::vector<HitReg> (*)(void *,
                                                      const std::vector<Ray> &);
 
 class Backend {
@@ -18,7 +18,7 @@ public:
 
   const std::string &name() const { return name_; }
 
-  std::vector<float> nearest_hits(const std::vector<Ray> &rays) {
+  std::vector<HitReg> nearest_hits(const std::vector<Ray> &rays) {
     return nearest_hits_(self_, rays);
   }
 
@@ -45,7 +45,7 @@ protected:
   ~InvokableBackend() = default;
 
 private:
-  static std::vector<float> dispatch(void *self, const std::vector<Ray> &rays) {
+  static std::vector<HitReg> dispatch(void *self, const std::vector<Ray> &rays) {
     return static_cast<Derived *>(self)->nearest_hits(rays);
   }
 };
@@ -63,7 +63,7 @@ inline const std::vector<Backend *> &available_backends() {
 
 inline NearestHitsDispatchFn nearest_hits_call = nullptr;
 
-inline std::vector<float> nearest_hits(const std::vector<Ray> &rays) {
+inline std::vector<HitReg> nearest_hits(const std::vector<Ray> &rays) {
   return nearest_hits_call(selected_backend->self_, rays);
 }
 

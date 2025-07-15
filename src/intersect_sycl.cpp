@@ -48,9 +48,9 @@ void SYCLBackend::set_tris(const Tris &tris) {
 
 void SYCLBackend::shutdown() { m_impl.reset(); }
 
-std::vector<float> SYCLBackend::nearest_hits(const std::vector<Ray> &rays) {
+std::vector<HitReg> SYCLBackend::nearest_hits(const std::vector<Ray> &rays) {
   try {
-    float *res = sycl::malloc_shared<float>(rays.size(), m_impl->m_q);
+    HitReg *res = sycl::malloc_shared<HitReg>(rays.size(), m_impl->m_q);
     Ray *rays_dev = sycl::malloc_device<Ray>(rays.size(), m_impl->m_q);
     m_impl->m_q.memcpy(rays_dev, rays.data(), sizeof(Ray) * rays.size()).wait();
 
@@ -62,21 +62,21 @@ std::vector<float> SYCLBackend::nearest_hits(const std::vector<Ray> &rays) {
             Hit hit;
             hit.valid = false;
             bvh->transverse(rays_dev[id], hit);
-            res[id] =
-                hit.valid ? hit.t : std::numeric_limits<float>::infinity();
+            res[id].t = hit.valid ? hit.t : std::numeric_limits<float>::infinity();
+            res[id].primitive_id = hit.valid ? hit.triIdx : static_cast<uint32_t>(-1);
           });
         })
         .wait();
 
-    std::vector<float> hits(rays.size());
-    m_impl->m_q.memcpy(hits.data(), res, sizeof(float) * rays.size()).wait();
+    std::vector<HitReg> hits(rays.size());
+    m_impl->m_q.memcpy(hits.data(), res, sizeof(HitReg) * rays.size()).wait();
     sycl::free(res, m_impl->m_q);
     sycl::free(rays_dev, m_impl->m_q);
     return hits;
   } catch (sycl::_V1::exception &e) {
     std::cout << e.what() << std::endl;
-    return std::vector<float>(rays.size(),
-                              std::numeric_limits<float>::infinity());
+    return std::vector<HitReg>(rays.size(),
+                              HitReg{std::numeric_limits<float>::infinity(), static_cast<uint32_t>(-1)});
   }
 }
 

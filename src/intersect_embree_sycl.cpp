@@ -188,11 +188,11 @@ void EmbreeSYCLBackend::set_tris(const Tris &tris) {
   m_rtctraversable = rtcGetSceneTraversable(m_rtcscene);
 }
 
-std::vector<float>
+std::vector<HitReg>
 EmbreeSYCLBackend::nearest_hits(const std::vector<Ray> &rays) {
   try {
 
-    std::vector<float> hits;
+    std::vector<HitReg> hits;
     Result *result =
         alignedSYCLMallocDeviceReadWrite<Result>(m_impl->m_q, rays.size(), 16);
     // result->geomID = RTC_INVALID_GEOMETRY_ID;
@@ -201,17 +201,26 @@ EmbreeSYCLBackend::nearest_hits(const std::vector<Ray> &rays) {
     castRay(m_impl->m_q, m_rtctraversable, rays, result);
 
     for (int i = 0; i < rays.size(); ++i) {
-      hits.push_back(result[i].geomID == RTC_INVALID_GEOMETRY_ID
-                         ? std::numeric_limits<float>::infinity()
-                         : result[i].tfar);
+
+      HitReg hit;
+
+      if(result[i].geomID == RTC_INVALID_GEOMETRY_ID) {
+        hit.t = std::numeric_limits<float>::infinity();
+        hit.primitive_id = static_cast<uint32_t>(-1);
+      } else {
+        hit.t = result[i].tfar;
+        hit.primitive_id = result[i].primID;
+      }
+
+      hits.push_back(hit);
     }
     alignedSYCLFree(m_impl->m_q, result);
     return hits;
 
   } catch (sycl::_V1::exception &e) {
     std::cout << e.what() << std::endl;
-    return std::vector<float>(rays.size(),
-                              std::numeric_limits<float>::infinity());
+    return std::vector<HitReg>(rays.size(),
+                              HitReg{std::numeric_limits<float>::infinity(), static_cast<uint32_t>(-1)});
   }
 }
 

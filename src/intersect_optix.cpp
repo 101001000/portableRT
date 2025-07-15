@@ -66,7 +66,7 @@ struct __align__(16) Params {
   OptixTraversableHandle handle;
   float4 *origins;
   float4 *directions;
-  float *results;
+  portableRT::HitReg *results;
 };
 
 static inline float3 toFloat3(const std::array<float, 3> &a) {
@@ -104,7 +104,7 @@ void OptiXBackend::init() {
   m_pco.exceptionFlags = OPTIX_EXCEPTION_FLAG_DEBUG |
                          OPTIX_EXCEPTION_FLAG_TRACE_DEPTH |
                          OPTIX_EXCEPTION_FLAG_STACK_OVERFLOW;
-  m_pco.numPayloadValues = 1; // ← usas optixSetPayload_0
+  m_pco.numPayloadValues = 2;
   m_pco.numAttributeValues = 3;
   m_pco.pipelineLaunchParamsVariableName =
       "params"; // ← tu PTX declara .const params
@@ -303,14 +303,14 @@ void OptiXBackend::set_tris(const Tris &tris) {
   }
 }
 
-std::vector<float> OptiXBackend::nearest_hits(const std::vector<Ray> &rays) {
+std::vector<HitReg> OptiXBackend::nearest_hits(const std::vector<Ray> &rays) {
 
-  std::vector<float> hits;
+  std::vector<HitReg> hits;
   hits.reserve(rays.size());
 
   CUdeviceptr d_res;
   CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_res),
-                        sizeof(float) * rays.size()));
+                        sizeof(HitReg) * rays.size()));
   CUdeviceptr d_origins;
   CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_origins),
                         sizeof(float4) * rays.size()));
@@ -336,7 +336,7 @@ std::vector<float> OptiXBackend::nearest_hits(const std::vector<Ray> &rays) {
   params.handle = m_gas_handle;
   params.origins = reinterpret_cast<float4 *>(d_origins);
   params.directions = reinterpret_cast<float4 *>(d_directions);
-  params.results = reinterpret_cast<float *>(d_res);
+  params.results = reinterpret_cast<HitReg *>(d_res);
 
   CUdeviceptr d_params;
   CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_params), sizeof(Params)));
@@ -347,8 +347,8 @@ std::vector<float> OptiXBackend::nearest_hits(const std::vector<Ray> &rays) {
 
   CUDA_CHECK(cudaStreamSynchronize(m_stream));
 
-  float *h_res = new float[rays.size()];
-  CUDA_CHECK(cudaMemcpy(h_res, (void *)d_res, sizeof(float) * rays.size(),
+  HitReg *h_res = new HitReg[rays.size()];
+  CUDA_CHECK(cudaMemcpy(h_res, (void *)d_res, sizeof(HitReg) * rays.size(),
                         cudaMemcpyDeviceToHost));
 
   hits.insert(hits.end(), h_res, h_res + rays.size());

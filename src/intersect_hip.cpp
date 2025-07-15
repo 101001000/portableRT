@@ -118,7 +118,7 @@ __device__ __host__ static uint64_t encodeBaseAddr(const void *baseAddr,
   return baseIndex + nodeIndex;
 }
 
-__global__ void nearest_hit(void *bvh, float *out, portableRT::Ray *rays,
+__global__ void nearest_hit(void *bvh, portableRT::HitReg *out, portableRT::Ray *rays,
                             uint64_t size, uint64_t pos, uint64_t num_rays) {
 
   int idx = threadIdx.x + blockIdx.x * blockDim.x;
@@ -147,6 +147,7 @@ __global__ void nearest_hit(void *bvh, float *out, portableRT::Ray *rays,
   int stack_ptr = 0;
 
   float hit = std::numeric_limits<float>::infinity();
+  uint32_t id = InvalidValue;
 
   while (stack_ptr >= 0) {
 
@@ -169,10 +170,11 @@ __global__ void nearest_hit(void *bvh, float *out, portableRT::Ray *rays,
     } else {
       float t = __int_as_float(res[0]) / __int_as_float(res[1]);
       hit = std::min(hit, t);
+      id = res[2];
     }
   }
 
-  out[idx] = hit;
+  out[idx] = {hit, id};
 }
 
 namespace portableRT {
@@ -420,11 +422,11 @@ void HIPBackend::set_tris(const Tris &tris) {
   delete (bvh);
 }
 
-std::vector<float> HIPBackend::nearest_hits(const std::vector<Ray> &rays) {
+std::vector<HitReg> HIPBackend::nearest_hits(const std::vector<Ray> &rays) {
 
-  float *dHit;
+  HitReg *dHit;
   Ray *dRays;
-  CHK(hipMalloc(&dHit, sizeof(float) * rays.size()));
+  CHK(hipMalloc(&dHit, sizeof(HitReg) * rays.size()));
   CHK(hipMalloc(&dRays, sizeof(Ray) * rays.size()));
   CHK(hipMemcpy(dRays, rays.data(), sizeof(Ray) * rays.size(),
                 hipMemcpyHostToDevice));
@@ -435,13 +437,13 @@ std::vector<float> HIPBackend::nearest_hits(const std::vector<Ray> &rays) {
   nearest_hit<<<blocks, block_size>>>(m_dbvh, dHit, dRays, 1000000000,
                                       m_rootidx, rays.size());
   CHK(hipDeviceSynchronize());
-  float *hHit = new float[rays.size()];
-  CHK(hipMemcpy(hHit, dHit, sizeof(float) * rays.size(),
+  HitReg *hHit = new HitReg[rays.size()];
+  CHK(hipMemcpy(hHit, dHit, sizeof(HitReg) * rays.size(),
                 hipMemcpyDeviceToHost));
   CHK(hipFree(dHit));
   CHK(hipFree(dRays));
 
-  return std::vector<float>(hHit, hHit + rays.size());
+  return std::vector<HitReg>(hHit, hHit + rays.size());
 }
 
 void HIPBackend::init() {}

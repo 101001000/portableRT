@@ -6,17 +6,22 @@
 
 namespace portableRT {
 
-void check_hit(int i, BVH *m_bvh, const std::vector<Ray> &rays, std::vector<float> &hits, int N){
+void check_hit(int i, BVH *m_bvh, const std::vector<Ray> &rays, std::vector<HitReg> &hits, int N){
   for(int r = 0; r < N; r++){
     Hit hit;
     hit.valid = false;
     m_bvh->transverse(rays[i + r], hit);
-    hits[i + r] = hit.valid ? hit.t : std::numeric_limits<float>::infinity();
+
+    HitReg hitReg;
+    hitReg.t = hit.valid ? hit.t : std::numeric_limits<float>::infinity();
+    hitReg.primitive_id = hit.valid ? hit.triIdx : -1;
+
+    hits[i + r] = hitReg;
   }
 }
 
-std::vector<float> CPUBackend::nearest_hits(const std::vector<Ray> &rays) {
-  std::vector<float> hits(rays.size());
+std::vector<HitReg> CPUBackend::nearest_hits(const std::vector<Ray> &rays) {
+  std::vector<HitReg> hits(rays.size());
 
   clear_affinity();
 

@@ -21,6 +21,11 @@ struct Ray {
   std::array<float, 3> direction;
 };
 
+struct HitReg{
+  float t;
+  uint32_t primitive_id;
+};
+
 using Tri = std::array<float, 9>;
 using Tris = std::vector<Tri>;
 

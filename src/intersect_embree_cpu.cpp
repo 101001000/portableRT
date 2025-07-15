@@ -20,7 +20,7 @@ RTCDevice initializeDevice() {
   return device;
 }
 
-float castRay(RTCScene scene, float ox, float oy, float oz, float dx, float dy,
+std::tuple<float, uint32_t> castRay(RTCScene scene, float ox, float oy, float oz, float dx, float dy,
               float dz) {
 
   struct RTCRayHit rayhit;
@@ -35,11 +35,12 @@ float castRay(RTCScene scene, float ox, float oy, float oz, float dx, float dy,
   rayhit.ray.mask = -1;
   rayhit.ray.flags = 0;
   rayhit.hit.geomID = RTC_INVALID_GEOMETRY_ID;
+  rayhit.hit.primID = RTC_INVALID_GEOMETRY_ID;
   rayhit.hit.instID[0] = RTC_INVALID_GEOMETRY_ID;
 
   rtcIntersect1(scene, &rayhit);
 
-  return rayhit.ray.tfar;
+  return std::make_tuple(rayhit.ray.tfar, rayhit.hit.primID);
 }
 
 namespace portableRT {
@@ -73,18 +74,19 @@ void EmbreeCPUBackend::set_tris(const Tris &tris) {
   rtcCommitScene(m_scene);
 }
 
-void check_hit(int i, RTCScene scene, const std::vector<Ray> &rays, std::vector<float> &hits, int N){
+void check_hit(int i, RTCScene scene, const std::vector<Ray> &rays, std::vector<HitReg> &hits, int N){
   for(int r = 0; r < N; r++){
-    float t = castRay(scene, rays[i + r].origin[0], rays[i + r].origin[1], rays[i + r].origin[2],
+    auto [t, geomID] = castRay(scene, rays[i + r].origin[0], rays[i + r].origin[1], rays[i + r].origin[2],
                       rays[i + r].direction[0], rays[i + r].direction[1], rays[i + r].direction[2]);
-    hits[i + r] = t;
+    hits[i + r].t = t;
+    hits[i + r].primitive_id = geomID;
   }
 }
 
-std::vector<float>
+std::vector<HitReg>
 EmbreeCPUBackend::nearest_hits(const std::vector<Ray> &rays) {
 
-  std::vector<float> hits;
+  std::vector<HitReg> hits;
   hits.resize(rays.size());
 
   clear_affinity();

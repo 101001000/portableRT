@@ -9,7 +9,7 @@ class CPUBackend : public InvokableBackend<CPUBackend> {
 public:
   CPUBackend() : InvokableBackend("CPU") { static RegisterBackend reg(*this); }
 
-  std::vector<float> nearest_hits(const std::vector<Ray> &rays);
+  std::vector<HitReg> nearest_hits(const std::vector<Ray> &rays);
   bool is_available() const override;
   void init() override;
   void shutdown() override;
