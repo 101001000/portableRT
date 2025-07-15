@@ -118,8 +118,9 @@ __device__ __host__ static uint64_t encodeBaseAddr(const void *baseAddr,
   return baseIndex + nodeIndex;
 }
 
-__global__ void nearest_hit(void *bvh, portableRT::HitReg *out, portableRT::Ray *rays,
-                            uint64_t size, uint64_t pos, uint64_t num_rays) {
+__global__ void nearest_hit(void *bvh, portableRT::HitReg *out,
+                            portableRT::Ray *rays, uint64_t size, uint64_t pos,
+                            uint64_t num_rays) {
 
   int idx = threadIdx.x + blockIdx.x * blockDim.x;
   if (idx >= num_rays)

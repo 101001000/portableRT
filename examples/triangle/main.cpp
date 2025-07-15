@@ -19,13 +19,14 @@ int main() {
     portableRT::select_backend(backend);
     backend->set_tris({vertices});
     std::vector<portableRT::HitReg> hits1 = portableRT::nearest_hits({hit_ray});
-    std::vector<portableRT::HitReg> hits2 = portableRT::nearest_hits({miss_ray});
+    std::vector<portableRT::HitReg> hits2 =
+        portableRT::nearest_hits({miss_ray});
     std::cout << "Ray 1: "
               << (hits1[0].t == std::numeric_limits<float>::infinity() ? "miss"
-                                                                     : "hit")
+                                                                       : "hit")
               << "\nRay 2: "
               << (hits2[0].t == std::numeric_limits<float>::infinity() ? "miss"
-                                                                     : "hit")
+                                                                       : "hit")
               << std::endl;
   }
 

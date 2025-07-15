@@ -9,7 +9,7 @@
 namespace portableRT {
 
 using NearestHitsDispatchFn = std::vector<HitReg> (*)(void *,
-                                                     const std::vector<Ray> &);
+                                                      const std::vector<Ray> &);
 
 class Backend {
 public:
@@ -45,7 +45,8 @@ protected:
   ~InvokableBackend() = default;
 
 private:
-  static std::vector<HitReg> dispatch(void *self, const std::vector<Ray> &rays) {
+  static std::vector<HitReg> dispatch(void *self,
+                                      const std::vector<Ray> &rays) {
     return static_cast<Derived *>(self)->nearest_hits(rays);
   }
 };

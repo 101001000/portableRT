@@ -204,7 +204,7 @@ EmbreeSYCLBackend::nearest_hits(const std::vector<Ray> &rays) {
 
       HitReg hit;
 
-      if(result[i].geomID == RTC_INVALID_GEOMETRY_ID) {
+      if (result[i].geomID == RTC_INVALID_GEOMETRY_ID) {
         hit.t = std::numeric_limits<float>::infinity();
         hit.primitive_id = static_cast<uint32_t>(-1);
       } else {
@@ -220,7 +220,8 @@ EmbreeSYCLBackend::nearest_hits(const std::vector<Ray> &rays) {
   } catch (sycl::_V1::exception &e) {
     std::cout << e.what() << std::endl;
     return std::vector<HitReg>(rays.size(),
-                              HitReg{std::numeric_limits<float>::infinity(), static_cast<uint32_t>(-1)});
+                               HitReg{std::numeric_limits<float>::infinity(),
+                                      static_cast<uint32_t>(-1)});
   }
 }
 

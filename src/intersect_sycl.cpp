@@ -62,8 +62,10 @@ std::vector<HitReg> SYCLBackend::nearest_hits(const std::vector<Ray> &rays) {
             Hit hit;
             hit.valid = false;
             bvh->transverse(rays_dev[id], hit);
-            res[id].t = hit.valid ? hit.t : std::numeric_limits<float>::infinity();
-            res[id].primitive_id = hit.valid ? hit.triIdx : static_cast<uint32_t>(-1);
+            res[id].t =
+                hit.valid ? hit.t : std::numeric_limits<float>::infinity();
+            res[id].primitive_id =
+                hit.valid ? hit.triIdx : static_cast<uint32_t>(-1);
           });
         })
         .wait();
@@ -76,7 +78,8 @@ std::vector<HitReg> SYCLBackend::nearest_hits(const std::vector<Ray> &rays) {
   } catch (sycl::_V1::exception &e) {
     std::cout << e.what() << std::endl;
     return std::vector<HitReg>(rays.size(),
-                              HitReg{std::numeric_limits<float>::infinity(), static_cast<uint32_t>(-1)});
+                               HitReg{std::numeric_limits<float>::infinity(),
+                                      static_cast<uint32_t>(-1)});
   }
 }
 

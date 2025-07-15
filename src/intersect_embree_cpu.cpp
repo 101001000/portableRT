@@ -20,8 +20,8 @@ RTCDevice initializeDevice() {
   return device;
 }
 
-std::tuple<float, uint32_t> castRay(RTCScene scene, float ox, float oy, float oz, float dx, float dy,
-              float dz) {
+std::tuple<float, uint32_t> castRay(RTCScene scene, float ox, float oy,
+                                    float oz, float dx, float dy, float dz) {
 
   struct RTCRayHit rayhit;
   rayhit.ray.org_x = ox;
@@ -74,10 +74,13 @@ void EmbreeCPUBackend::set_tris(const Tris &tris) {
   rtcCommitScene(m_scene);
 }
 
-void check_hit(int i, RTCScene scene, const std::vector<Ray> &rays, std::vector<HitReg> &hits, int N){
-  for(int r = 0; r < N; r++){
-    auto [t, geomID] = castRay(scene, rays[i + r].origin[0], rays[i + r].origin[1], rays[i + r].origin[2],
-                      rays[i + r].direction[0], rays[i + r].direction[1], rays[i + r].direction[2]);
+void check_hit(int i, RTCScene scene, const std::vector<Ray> &rays,
+               std::vector<HitReg> &hits, int N) {
+  for (int r = 0; r < N; r++) {
+    auto [t, geomID] =
+        castRay(scene, rays[i + r].origin[0], rays[i + r].origin[1],
+                rays[i + r].origin[2], rays[i + r].direction[0],
+                rays[i + r].direction[1], rays[i + r].direction[2]);
     hits[i + r].t = t;
     hits[i + r].primitive_id = geomID;
   }
@@ -95,18 +98,15 @@ EmbreeCPUBackend::nearest_hits(const std::vector<Ray> &rays) {
   std::vector<std::thread> threads;
   threads.reserve(n);
 
-
   int rays_per_thread = rays.size() / n;
 
-  for (unsigned i = 0; i < n; ++i){
-    threads.emplace_back(check_hit,
-                         i * rays_per_thread,
-                         m_scene,
-                         std::cref(rays), 
-                         std::ref(hits), rays_per_thread);  
-    }
+  for (unsigned i = 0; i < n; ++i) {
+    threads.emplace_back(check_hit, i * rays_per_thread, m_scene,
+                         std::cref(rays), std::ref(hits), rays_per_thread);
+  }
 
-  for (auto &thread : threads) thread.join();
+  for (auto &thread : threads)
+    thread.join();
 
   check_hit(n * rays_per_thread, m_scene, rays, hits, rays.size() % n);
 

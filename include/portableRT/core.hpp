@@ -7,13 +7,12 @@
 namespace portableRT {
 
 // SYCL can mess up with affinity for pinning cores.
-inline void clear_affinity()
-{
+inline void clear_affinity() {
   cpu_set_t mask;
-      CPU_ZERO(&mask);
-      for (int c = 0; c < std::thread::hardware_concurrency(); ++c)
-          CPU_SET(c, &mask);
-      sched_setaffinity(0, sizeof(mask), &mask); 
+  CPU_ZERO(&mask);
+  for (int c = 0; c < std::thread::hardware_concurrency(); ++c)
+    CPU_SET(c, &mask);
+  sched_setaffinity(0, sizeof(mask), &mask);
 }
 
 struct Ray {
@@ -21,7 +20,7 @@ struct Ray {
   std::array<float, 3> direction;
 };
 
-struct HitReg{
+struct HitReg {
   float t;
   uint32_t primitive_id;
 };

@@ -1,13 +1,14 @@
 #include "../include/portableRT/intersect_cpu.hpp"
 #include <array>
 #include <fstream>
-#include <thread>
 #include <functional>
+#include <thread>
 
 namespace portableRT {
 
-void check_hit(int i, BVH *m_bvh, const std::vector<Ray> &rays, std::vector<HitReg> &hits, int N){
-  for(int r = 0; r < N; r++){
+void check_hit(int i, BVH *m_bvh, const std::vector<Ray> &rays,
+               std::vector<HitReg> &hits, int N) {
+  for (int r = 0; r < N; r++) {
     Hit hit;
     hit.valid = false;
     m_bvh->transverse(rays[i + r], hit);
@@ -31,15 +32,13 @@ std::vector<HitReg> CPUBackend::nearest_hits(const std::vector<Ray> &rays) {
 
   int rays_per_thread = rays.size() / n;
 
-  for (unsigned i = 0; i < n; ++i){
-    threads.emplace_back(check_hit,
-                         i * rays_per_thread,
-                         m_bvh,
-                         std::cref(rays), 
-                         std::ref(hits), rays_per_thread);  
-    }
+  for (unsigned i = 0; i < n; ++i) {
+    threads.emplace_back(check_hit, i * rays_per_thread, m_bvh, std::cref(rays),
+                         std::ref(hits), rays_per_thread);
+  }
 
-  for (auto &thread : threads) thread.join();
+  for (auto &thread : threads)
+    thread.join();
 
   check_hit(n * rays_per_thread, m_bvh, rays, hits, rays.size() % n);
 

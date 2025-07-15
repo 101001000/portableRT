@@ -136,13 +136,13 @@ int main() {
     std::cout << "Testing " << backend->name() << std::endl;
     portableRT::select_backend(backend);
     backend->set_tris({vertices});
-    std::vector<float> hits1 = portableRT::nearest_hits({hit_ray});
-    std::vector<float> hits2 = portableRT::nearest_hits({miss_ray});
+    std::vector<HitReg> hits1 = portableRT::nearest_hits({hit_ray});
+    std::vector<HitReg> hits2 = portableRT::nearest_hits({miss_ray});
     std::cout << "Ray 1: "
-              << (hits1[0] == std::numeric_limits<float>::infinity() ? "miss"
+              << (hits1[0].t == std::numeric_limits<float>::infinity() ? "miss"
                                                                      : "hit")
               << "\nRay 2: "
-              << (hits2[0] == std::numeric_limits<float>::infinity() ? "miss"
+              << (hits2[0].t == std::numeric_limits<float>::infinity() ? "miss"
                                                                      : "hit")
               << std::endl;
   }

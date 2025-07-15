@@ -1,287 +1,281 @@
 #include <SDL2/SDL.h>
-#include <portableRT/portableRT.hpp>
 #include <chrono>
 #include <iomanip>
+#include <portableRT/portableRT.hpp>
 
 #define CGLTF_IMPLEMENTATION
 #include <cgltf.h>
 
 #include "../common/util.h"
 
-float lambert_shade(const portableRT::Tri& tri, const portableRT::Ray& ray){
-    std::array<float, 3> v1 = {tri[0], tri[1], tri[2]};
-    std::array<float, 3> v2 = {tri[3], tri[4], tri[5]};
-    std::array<float, 3> v3 = {tri[6], tri[7], tri[8]};
-    
-    std::array<float,3> e1 = { v2[0]-v1[0], v2[1]-v1[1], v2[2]-v1[2] };
-    std::array<float,3> e2 = { v3[0]-v1[0], v3[1]-v1[1], v3[2]-v1[2] };
+float lambert_shade(const portableRT::Tri &tri, const portableRT::Ray &ray) {
+  std::array<float, 3> v1 = {tri[0], tri[1], tri[2]};
+  std::array<float, 3> v2 = {tri[3], tri[4], tri[5]};
+  std::array<float, 3> v3 = {tri[6], tri[7], tri[8]};
 
-    std::array<float,3> N = {
-        e1[1]*e2[2] - e1[2]*e2[1],
-        e1[2]*e2[0] - e1[0]*e2[2],
-        e1[0]*e2[1] - e1[1]*e2[0]
-    };
+  std::array<float, 3> e1 = {v2[0] - v1[0], v2[1] - v1[1], v2[2] - v1[2]};
+  std::array<float, 3> e2 = {v3[0] - v1[0], v3[1] - v1[1], v3[2] - v1[2]};
 
-    float lenN = std::sqrt(
-        N[0]*N[0] +
-        N[1]*N[1] +
-        N[2]*N[2]);
-    
-    if(fabs(lenN) > 0.001){
-        N[0] /= lenN;
-        N[1] /= lenN;
-        N[2] /= lenN;
-    }
+  std::array<float, 3> N = {e1[1] * e2[2] - e1[2] * e2[1],
+                            e1[2] * e2[0] - e1[0] * e2[2],
+                            e1[0] * e2[1] - e1[1] * e2[0]};
 
-    float dotNV = N[0]*-ray.direction[0] + N[1]*-ray.direction[1] + N[2]*-ray.direction[2];
-    return std::max(0.0f, std::min(dotNV, 1.0f));
+  float lenN = std::sqrt(N[0] * N[0] + N[1] * N[1] + N[2] * N[2]);
+
+  if (fabs(lenN) > 0.001) {
+    N[0] /= lenN;
+    N[1] /= lenN;
+    N[2] /= lenN;
+  }
+
+  float dotNV = N[0] * -ray.direction[0] + N[1] * -ray.direction[1] +
+                N[2] * -ray.direction[2];
+  return std::max(0.0f, std::min(dotNV, 1.0f));
 }
 
-int main(int argc, char** argv){
-    cgltf_options options = {};
-    cgltf_data* data = NULL;
-    cgltf_result result = cgltf_parse_file(&options, (get_executable_dir() + std::string("/assets/Sponza/Sponza.gltf")).c_str(), &data);
-    cgltf_load_buffers(&options, data, (get_executable_dir() + "/assets/Sponza/Sponza.gltf").c_str());
-    
-    std::vector<std::array<float, 9>> tris;
+int main(int argc, char **argv) {
+  cgltf_options options = {};
+  cgltf_data *data = NULL;
+  cgltf_result result = cgltf_parse_file(
+      &options,
+      (get_executable_dir() + std::string("/assets/Sponza/Sponza.gltf"))
+          .c_str(),
+      &data);
+  cgltf_load_buffers(
+      &options, data,
+      (get_executable_dir() + "/assets/Sponza/Sponza.gltf").c_str());
 
-    if (result == cgltf_result_success)
-    {
-        for (size_t i = 0; i < data->meshes_count; ++i) {
-            const cgltf_mesh& mesh = data->meshes[i];
-        
-            for (size_t p = 0; p < mesh.primitives_count; ++p) {
-                const cgltf_primitive& prim = mesh.primitives[p];
-                if (prim.type != cgltf_primitive_type_triangles)
-                    continue;
-        
-                // Accede a las posiciones
-                const cgltf_accessor* pos_accessor = nullptr;
-                const cgltf_accessor* idx_accessor = prim.indices;
-        
-                for (size_t a = 0; a < prim.attributes_count; ++a) {
-                    if (prim.attributes[a].type == cgltf_attribute_type_position) {
-                        pos_accessor = prim.attributes[a].data;
-                        break;
-                    }
-                }
-        
-                if (!pos_accessor || !idx_accessor)
-                    continue;
-        
-                float* positions = (float*)(((uint8_t*)pos_accessor->buffer_view->buffer->data) +
-                                            pos_accessor->buffer_view->offset +
-                                            pos_accessor->offset);
-        
-                void* indices_data = ((uint8_t*)idx_accessor->buffer_view->buffer->data) +
-                                     idx_accessor->buffer_view->offset +
-                                     idx_accessor->offset;
-        
-                auto get_index = [&](int i) -> int {
-                    switch (idx_accessor->component_type) {
-                        case cgltf_component_type_r_8u:
-                            return ((uint8_t*)indices_data)[i];
-                        case cgltf_component_type_r_16u:
-                            return ((uint16_t*)indices_data)[i];
-                        case cgltf_component_type_r_32u:
-                            return ((uint32_t*)indices_data)[i];
-                        default:
-                            return 0;
-                    }
-                };
-        
-                for (size_t i = 0; i + 2 < idx_accessor->count; i += 3) {
-                    std::array<float, 9> tri;
-                    for (int j = 0; j < 3; ++j) {
-                        int idx = get_index(i + j);
-                        tri[j * 3 + 0] = positions[idx * 3 + 0];
-                        tri[j * 3 + 1] = positions[idx * 3 + 1];
-                        tri[j * 3 + 2] = positions[idx * 3 + 2];
-                    }
-                    tris.push_back(tri);
-                }
-            }
+  std::vector<std::array<float, 9>> tris;
+
+  if (result == cgltf_result_success) {
+    for (size_t i = 0; i < data->meshes_count; ++i) {
+      const cgltf_mesh &mesh = data->meshes[i];
+
+      for (size_t p = 0; p < mesh.primitives_count; ++p) {
+        const cgltf_primitive &prim = mesh.primitives[p];
+        if (prim.type != cgltf_primitive_type_triangles)
+          continue;
+
+        // Accede a las posiciones
+        const cgltf_accessor *pos_accessor = nullptr;
+        const cgltf_accessor *idx_accessor = prim.indices;
+
+        for (size_t a = 0; a < prim.attributes_count; ++a) {
+          if (prim.attributes[a].type == cgltf_attribute_type_position) {
+            pos_accessor = prim.attributes[a].data;
+            break;
+          }
         }
-        cgltf_free(data);
+
+        if (!pos_accessor || !idx_accessor)
+          continue;
+
+        float *positions =
+            (float *)(((uint8_t *)pos_accessor->buffer_view->buffer->data) +
+                      pos_accessor->buffer_view->offset + pos_accessor->offset);
+
+        void *indices_data =
+            ((uint8_t *)idx_accessor->buffer_view->buffer->data) +
+            idx_accessor->buffer_view->offset + idx_accessor->offset;
+
+        auto get_index = [&](int i) -> int {
+          switch (idx_accessor->component_type) {
+          case cgltf_component_type_r_8u:
+            return ((uint8_t *)indices_data)[i];
+          case cgltf_component_type_r_16u:
+            return ((uint16_t *)indices_data)[i];
+          case cgltf_component_type_r_32u:
+            return ((uint32_t *)indices_data)[i];
+          default:
+            return 0;
+          }
+        };
+
+        for (size_t i = 0; i + 2 < idx_accessor->count; i += 3) {
+          std::array<float, 9> tri;
+          for (int j = 0; j < 3; ++j) {
+            int idx = get_index(i + j);
+            tri[j * 3 + 0] = positions[idx * 3 + 0];
+            tri[j * 3 + 1] = positions[idx * 3 + 1];
+            tri[j * 3 + 2] = positions[idx * 3 + 2];
+          }
+          tris.push_back(tri);
+        }
+      }
+    }
+    cgltf_free(data);
+  }
+
+  constexpr size_t width = 64;
+  constexpr size_t height = 64;
+
+  std::cout << "Select backend: " << std::endl;
+  int i = 0;
+  for (auto backend : portableRT::available_backends()) {
+    std::cout << i++ << " " << backend->name() << std::endl;
+  }
+
+  int sel_backend = 0;
+  std::cin >> sel_backend;
+
+  portableRT::select_backend(portableRT::available_backends()[sel_backend]);
+
+  float camera_dist = 0.3f;
+  float sensor_size = 0.05f;
+  float sensor_dist = 0.05f;
+
+  std::vector<unsigned char> image(width * height);
+
+  auto bvh_start = std::chrono::high_resolution_clock::now();
+  portableRT::selected_backend->set_tris(tris);
+  auto bvh_end = std::chrono::high_resolution_clock::now();
+  auto bvh_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+      bvh_end - bvh_start);
+
+  std::cout << "BVH building time: " << bvh_duration.count() << " ms"
+            << std::endl;
+
+  std::vector<portableRT::Ray> rays;
+
+  uint8_t *pixels = new uint8_t[width * height * 4];
+
+  SDL_Init(SDL_INIT_VIDEO);
+  SDL_Window *win = SDL_CreateWindow("RT", SDL_WINDOWPOS_CENTERED,
+                                     SDL_WINDOWPOS_CENTERED, width, height, 0);
+  SDL_Renderer *ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
+  SDL_Texture *tex =
+      SDL_CreateTexture(ren, SDL_PIXELFORMAT_ABGR8888,
+                        SDL_TEXTUREACCESS_STREAMING, width, height);
+
+  std::array<float, 3> camera_pos{288, 150, -50};
+  float camera_vel = 10.0f;
+  float camera_angle = -1.58;
+  float camera_wvel = 0.05f;
+
+  bool running = true;
+  while (running) {
+
+    auto frame_start = std::chrono::high_resolution_clock::now();
+
+    SDL_Event e;
+    while (SDL_PollEvent(&e)) {
+      if (e.type == SDL_QUIT) {
+        running = false;
+      } else if (e.type == SDL_KEYDOWN) {
+        switch (e.key.keysym.sym) {
+        case SDLK_w:
+          camera_pos[2] += camera_vel * cos(camera_angle);
+          camera_pos[0] += camera_vel * sin(camera_angle);
+          break;
+        case SDLK_s:
+          camera_pos[2] -= camera_vel * cos(camera_angle);
+          camera_pos[0] -= camera_vel * sin(camera_angle);
+          break;
+        case SDLK_d:
+          camera_pos[0] += camera_vel * cos(camera_angle);
+          camera_pos[2] -= camera_vel * sin(camera_angle);
+          break;
+        case SDLK_a:
+          camera_pos[0] -= camera_vel * cos(camera_angle);
+          camera_pos[2] += camera_vel * sin(camera_angle);
+          break;
+        case SDLK_SPACE:
+          camera_pos[1] += camera_vel;
+          break;
+        case SDLK_LSHIFT:
+          camera_pos[1] -= camera_vel;
+          break;
+        case SDLK_RIGHT:
+          camera_angle += camera_wvel;
+          break;
+        case SDLK_LEFT:
+          camera_angle -= camera_wvel;
+          break;
+        default:
+          break;
+        }
+      }
     }
 
-    constexpr size_t width = 64;
-    constexpr size_t height = 64;   
+    rays.clear();
 
-    std::cout << "Select backend: " << std::endl;
-    int i = 0;
-    for (auto backend : portableRT::available_backends()) {
-        std::cout << i++ << " " << backend->name() << std::endl;
+    for (int y = height - 1; y >= 0; --y) {
+      for (int x = 0; x < width; ++x) {
+
+        float sx = sensor_size * (static_cast<float>(x) / width - 0.5);
+        float sy = sensor_size * (static_cast<float>(y) / height - 0.5);
+
+        float ca = std::cos(camera_angle);
+        float sa = std::sin(camera_angle);
+
+        float dx = ca * sx + sa * sensor_dist;
+        float dz = -sa * sx + ca * sensor_dist;
+
+        std::array<float, 3> sensor_pos{camera_pos[0] + dx, camera_pos[1] + sy,
+                                        camera_pos[2] + dz};
+
+        portableRT::Ray ray;
+        ray.origin = camera_pos;
+        ray.direction = {sensor_pos[0] - camera_pos[0],
+                         sensor_pos[1] - camera_pos[1],
+                         sensor_pos[2] - camera_pos[2]};
+        float length = sqrt(ray.direction[0] * ray.direction[0] +
+                            ray.direction[1] * ray.direction[1] +
+                            ray.direction[2] * ray.direction[2]);
+
+        ray.direction[0] /= length;
+        ray.direction[1] /= length;
+        ray.direction[2] /= length;
+
+        rays.push_back(ray);
+      }
     }
 
-    int sel_backend = 0;
-    std::cin >> sel_backend;
+    auto rt_start = std::chrono::high_resolution_clock::now();
+    std::vector<portableRT::HitReg> hits = portableRT::nearest_hits(rays);
+    auto rt_end = std::chrono::high_resolution_clock::now();
 
-    portableRT::select_backend(portableRT::available_backends()[sel_backend]);
-
-    float camera_dist = 0.3f;
-    float sensor_size = 0.05f;
-    float sensor_dist = 0.05f;
-
-    std::vector<unsigned char> image(width * height);
-
-    auto bvh_start = std::chrono::high_resolution_clock::now();
-    portableRT::selected_backend->set_tris(tris);
-    auto bvh_end = std::chrono::high_resolution_clock::now();
-    auto bvh_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-        bvh_end - bvh_start);
-
-    std::cout << "BVH building time: " << bvh_duration.count() << " ms"
-                << std::endl;
-
-    std::vector<portableRT::Ray> rays;
-
-
-
-    uint8_t *pixels = new uint8_t[width*height*4];
-
-    SDL_Init(SDL_INIT_VIDEO);
-    SDL_Window  *win = SDL_CreateWindow("RT", SDL_WINDOWPOS_CENTERED,
-                                        SDL_WINDOWPOS_CENTERED, width, height, 0);
-    SDL_Renderer *ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
-    SDL_Texture  *tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ABGR8888,
-                                          SDL_TEXTUREACCESS_STREAMING, width, height);
-
-
-    std::array<float, 3> camera_pos{288, 150, -50};
-    float camera_vel = 10.0f;
-    float camera_angle = -1.58;
-    float camera_wvel = 0.05f;
-
-    bool running = true;
-    while (running) {
-
-        auto frame_start = std::chrono::high_resolution_clock::now();
-
-        SDL_Event e;
-        while (SDL_PollEvent(&e)) {
-            if (e.type == SDL_QUIT) {
-                running = false;
-            } else if (e.type == SDL_KEYDOWN) {
-                switch (e.key.keysym.sym) {
-                    case SDLK_w:
-                        camera_pos[2] += camera_vel * cos(camera_angle);
-                        camera_pos[0] += camera_vel * sin(camera_angle);
-                        break;
-                    case SDLK_s:
-                        camera_pos[2] -= camera_vel * cos(camera_angle);
-                        camera_pos[0] -= camera_vel * sin(camera_angle);
-                        break;
-                    case SDLK_d:
-                        camera_pos[0] += camera_vel * cos(camera_angle);
-                        camera_pos[2] -= camera_vel * sin(camera_angle);
-                        break;
-                    case SDLK_a:
-                        camera_pos[0] -= camera_vel * cos(camera_angle);
-                        camera_pos[2] += camera_vel * sin(camera_angle);    
-                        break;
-                    case SDLK_SPACE:
-                        camera_pos[1] += camera_vel;
-                        break;
-                    case SDLK_LSHIFT:
-                        camera_pos[1] -= camera_vel;
-                        break;
-                    case SDLK_RIGHT:
-                        camera_angle += camera_wvel;
-                        break;
-                    case SDLK_LEFT:
-                        camera_angle -= camera_wvel;
-                        break;
-                    default:
-                        break;
-                }
-            }
-        }
-    
-
-        rays.clear();
-
-        for (int y = height - 1; y >= 0; --y) {
-            for (int x = 0; x < width; ++x) {
-        
-            float sx = sensor_size * (static_cast<float>(x) / width - 0.5);
-            float sy = sensor_size * (static_cast<float>(y) / height - 0.5);
-    
-            float ca = std::cos(camera_angle);
-            float sa = std::sin(camera_angle);
-
-            float dx =  ca * sx + sa * sensor_dist;  
-            float dz = -sa * sx + ca * sensor_dist;
-
-            std::array<float,3> sensor_pos{
-                camera_pos[0] + dx,
-                camera_pos[1] + sy,
-                camera_pos[2] + dz
-            };
-
-        
-            portableRT::Ray ray;
-            ray.origin = camera_pos;
-            ray.direction = {sensor_pos[0] - camera_pos[0],
-                            sensor_pos[1] - camera_pos[1],
-                            sensor_pos[2] - camera_pos[2]};
-            float length = sqrt(ray.direction[0] * ray.direction[0] +
-                                ray.direction[1] * ray.direction[1] +
-                                ray.direction[2] * ray.direction[2]);
-        
-            ray.direction[0] /= length;
-            ray.direction[1] /= length;
-            ray.direction[2] /= length;
-        
-            rays.push_back(ray);
-            }
-        }
-        
-        auto rt_start = std::chrono::high_resolution_clock::now();
-        std::vector<portableRT::HitReg> hits = portableRT::nearest_hits(rays);
-        auto rt_end = std::chrono::high_resolution_clock::now();
-
-        for (size_t i = 0; i < hits.size(); i++) {
-            bool hit = hits[i].t != std::numeric_limits<float>::infinity();
-            if(!hit){
-                pixels[i*4+0] = 0;
-                pixels[i*4+1] = 0;
-                pixels[i*4+2] = 0;
-                pixels[i*4+3] = 255;
-                continue;
-            } else{
-                float color = 255 * lambert_shade(tris[hits[i].primitive_id], rays[i]);
-                pixels[i*4+0] = color;
-                pixels[i*4+1] = color;
-                pixels[i*4+2] = color;
-                pixels[i*4+3] = 255;
-            }
-        }
-
-
-        SDL_UpdateTexture(tex, nullptr, pixels, width*4);
-        SDL_RenderClear(ren);
-        SDL_RenderCopy(ren, tex, nullptr, nullptr);
-        SDL_RenderPresent(ren);
-
-        auto frame_end = std::chrono::high_resolution_clock::now();
-        auto frame_duration = std::chrono::duration_cast<std::chrono::microseconds>(
-            frame_end - frame_start);
-        auto rt_duration = std::chrono::duration_cast<std::chrono::microseconds>(
-            rt_end - rt_start);
-    
-        std::cout << std::fixed << std::setprecision(3)
-            << "\r Position: " << camera_pos[0] << ", " << camera_pos[1] << ", " << camera_pos[2]
-            << " | "
-            << "Frame time: " << frame_duration.count() / 1000.0 << " ms | "
-            << "RT time: " << rt_duration.count() / 1000.0 << " ms ("
-            << rt_duration.count() / static_cast<float>(frame_duration.count()) * 100 << "%)"
-            << std::flush;
+    for (size_t i = 0; i < hits.size(); i++) {
+      bool hit = hits[i].t != std::numeric_limits<float>::infinity();
+      if (!hit) {
+        pixels[i * 4 + 0] = 0;
+        pixels[i * 4 + 1] = 0;
+        pixels[i * 4 + 2] = 0;
+        pixels[i * 4 + 3] = 255;
+        continue;
+      } else {
+        float color = 255 * lambert_shade(tris[hits[i].primitive_id], rays[i]);
+        pixels[i * 4 + 0] = color;
+        pixels[i * 4 + 1] = color;
+        pixels[i * 4 + 2] = color;
+        pixels[i * 4 + 3] = 255;
+      }
     }
 
-    SDL_DestroyTexture(tex);
-    SDL_DestroyRenderer(ren);
-    SDL_DestroyWindow(win);
-    SDL_Quit();
-    delete[] pixels;
+    SDL_UpdateTexture(tex, nullptr, pixels, width * 4);
+    SDL_RenderClear(ren);
+    SDL_RenderCopy(ren, tex, nullptr, nullptr);
+    SDL_RenderPresent(ren);
+
+    auto frame_end = std::chrono::high_resolution_clock::now();
+    auto frame_duration = std::chrono::duration_cast<std::chrono::microseconds>(
+        frame_end - frame_start);
+    auto rt_duration = std::chrono::duration_cast<std::chrono::microseconds>(
+        rt_end - rt_start);
+
+    std::cout << std::fixed << std::setprecision(3)
+              << "\r Position: " << camera_pos[0] << ", " << camera_pos[1]
+              << ", " << camera_pos[2] << " | "
+              << "Frame time: " << frame_duration.count() / 1000.0 << " ms | "
+              << "RT time: " << rt_duration.count() / 1000.0 << " ms ("
+              << rt_duration.count() /
+                     static_cast<float>(frame_duration.count()) * 100
+              << "%)" << std::flush;
+  }
+
+  SDL_DestroyTexture(tex);
+  SDL_DestroyRenderer(ren);
+  SDL_DestroyWindow(win);
+  SDL_Quit();
+  delete[] pixels;
 }
