@@ -27,7 +27,7 @@ extern "C" __global__ void __raygen__rg()
                 origin,
                 direction,
                 0.0f,              
-                1000.0f,           
+                10000000.0f,           
                 0.0f,     
                 OptixVisibilityMask( 255 ),
                 OPTIX_RAY_FLAG_NONE,
