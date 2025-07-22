@@ -6,16 +6,14 @@
 
 namespace portableRT {
 
-void check_hit(int i, BVH *m_bvh, const std::vector<Ray> &rays,
-               std::vector<HitReg> &hits, int N) {
+void check_hit(int i, const std::vector<Ray> &rays,
+               std::vector<HitReg> &hits, int N, temp::BVH2 &m_bvh) {
   for (int r = 0; r < N; r++) {
-    Hit hit;
-    hit.valid = false;
-    m_bvh->transverse(rays[i + r], hit);
+    auto [nearest_tri_idx, t] = m_bvh.nearest_tri(rays[i + r]);
 
     HitReg hitReg;
-    hitReg.t = hit.valid ? hit.t : std::numeric_limits<float>::infinity();
-    hitReg.primitive_id = hit.valid ? hit.triIdx : -1;
+    hitReg.t = t;
+    hitReg.primitive_id = nearest_tri_idx;
 
     hits[i + r] = hitReg;
   }
@@ -33,14 +31,14 @@ std::vector<HitReg> CPUBackend::nearest_hits(const std::vector<Ray> &rays) {
   int rays_per_thread = rays.size() / n;
 
   for (unsigned i = 0; i < n; ++i) {
-    threads.emplace_back(check_hit, i * rays_per_thread, m_bvh, std::cref(rays),
-                         std::ref(hits), rays_per_thread);
+    threads.emplace_back(check_hit, i * rays_per_thread, std::cref(rays),
+                         std::ref(hits), rays_per_thread, std::ref(m_bvh));
   }
 
   for (auto &thread : threads)
     thread.join();
 
-  check_hit(n * rays_per_thread, m_bvh, rays, hits, rays.size() % n);
+  check_hit(n * rays_per_thread, rays, hits, rays.size() % n, m_bvh);
 
   return hits;
 }
@@ -49,13 +47,7 @@ bool CPUBackend::is_available() const { return true; }
 void CPUBackend::init() {}
 void CPUBackend::shutdown() {}
 void CPUBackend::set_tris(const Tris &tris) {
-
-  m_tris = tris;
-
-  m_bvh = new BVH();
-  m_bvh->triIndices = new int[tris.size()];
-  m_bvh->tris = m_tris.data();
-  m_bvh->build(&tris);
+  m_bvh.build(tris);
 }
 
 std::string CPUBackend::device_name() const {

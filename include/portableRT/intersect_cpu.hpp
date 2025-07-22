@@ -1,7 +1,7 @@
 #pragma once
 #include "backend.hpp"
-#include "bvh.hpp"
 #include "core.hpp"
+#include "bvh2.hpp"
 
 namespace portableRT {
 
@@ -17,8 +17,7 @@ public:
   std::string device_name() const override;
 
 private:
-  Tris m_tris;
-  BVH *m_bvh;
+  temp::BVH2 m_bvh;
 };
 
 static CPUBackend cpu_backend;
