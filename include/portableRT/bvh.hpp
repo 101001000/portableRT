@@ -1,115 +1,240 @@
 #pragma once
 
-// I'm using this monstrosity temporaly.
-
-#include <algorithm>
-#include <array>
-#include <chrono>
-#include <limits>
-#include <vector>
-
 #include "core.hpp"
+#include <numeric>
 
-#define BVH_DEPTH 18
-#define BVH_SAHBINS 14
+namespace portableRT{
 
-// Workaround for compiling with non sycl compilers
-#ifndef SYCL_EXTERNAL
-#define SYCL_EXTERNAL
-#endif
-
-namespace portableRT {
-
-using Vector3 = std::array<float, 3>;
-inline std::array<float, 3> operator+(const std::array<float, 3> &a,
-                                      const std::array<float, 3> &b) {
-  return {a[0] + b[0], a[1] + b[1], a[2] + b[2]};
-}
-inline std::array<float, 3> operator-(const std::array<float, 3> &a,
-                                      const std::array<float, 3> &b) {
-  return {a[0] - b[0], a[1] - b[1], a[2] - b[2]};
-}
-inline std::array<float, 3> operator*(float s, const std::array<float, 3> &v) {
-  return {s * v[0], s * v[1], s * v[2]};
-}
-
-struct Hit {
-  bool valid;
-  Vector3 position;
-  unsigned int triIdx;
-  float t;
-};
-
-struct BVHTri {
-
-  Tri tri;
-  int index;
-
-  BVHTri(Tri _tri, int _index);
-
-  BVHTri();
-};
-
-struct Node {
-
-  Vector3 b1, b2;
-  int from, to, idx, depth;
-  bool valid;
-
-  Node();
-
-  Node(int _idx, Vector3 _b1, Vector3 _b2, int _from, int _to, int _depth);
-};
-
-// Data structure which holds all the geometry data organized so it can be
-// intersected fast with light rays.
-
-class BVH {
-
+class BVH2{
 public:
-  int nodeIdx = 0;
-  int allocatedTris = 0;
-  int totalTris = 0;
+    using IdxTriVector = std::vector<std::pair<uint32_t, Tri>>;
+    using AABB = std::pair<std::array<float, 3>, std::array<float, 3>>;
 
-  Tri *tris;
 
-  Node nodes[2 << BVH_DEPTH];
+    static AABB empty_aabb(){
+        return {{std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max()}, {std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest()}};
+    }
 
-  int triIdx = 0;
-  int *triIndices;
+    struct Node{
+        bool is_leaf = false;
+        uint32_t tri = -1;
+        uint32_t left = -1;
+        uint32_t right = -1;
+        AABB bounds = empty_aabb();
+    };
 
-  BVH() {}
+    static AABB make_aabb(const Tri& tri){
+        AABB bounds;
+        bounds.first[0] = std::min(tri[0], std::min(tri[3], tri[6]));
+        bounds.first[1] = std::min(tri[1], std::min(tri[4], tri[7]));
+        bounds.first[2] = std::min(tri[2], std::min(tri[5], tri[8]));
+        bounds.second[0] = std::max(tri[0], std::max(tri[3], tri[6]));
+        bounds.second[1] = std::max(tri[1], std::max(tri[4], tri[7]));
+        bounds.second[2] = std::max(tri[2], std::max(tri[5], tri[8]));
+        return bounds;
+    }
 
-  bool intersect(Ray ray, Vector3 b1, Vector3 b2);
+    static AABB extend_aabb(const AABB& a, const AABB& b){
+        AABB bounds;
+        bounds.first[0] = std::min(a.first[0], b.first[0]);
+        bounds.first[1] = std::min(a.first[1], b.first[1]);
+        bounds.first[2] = std::min(a.first[2], b.first[2]);
+        bounds.second[0] = std::max(a.second[0], b.second[0]);
+        bounds.second[1] = std::max(a.second[1], b.second[1]);
+        bounds.second[2] = std::max(a.second[2], b.second[2]);
+        return bounds;
+    }
 
-  SYCL_EXTERNAL void transverse(Ray ray, Hit &nearestHit);
+    // Half area of a AABB
+    static float aabb_harea(const AABB& aabb){
+        const float dx = aabb.second[0] - aabb.first[0];
+        const float dy = aabb.second[1] - aabb.first[1];
+        const float dz = aabb.second[2] - aabb.first[2];
+        return (dx*dy + dx*dz + dy*dz);
+    }
 
-  void intersectNode(Ray ray, Node node, Hit &nearestHit);
+    static void divide_sah(const IdxTriVector &input, IdxTriVector &left, IdxTriVector &right) {
 
-  Node leftChild(int idx, int depth);
+        constexpr size_t bin_count = 14;
+        float min_cost = std::numeric_limits<float>::max();
+        int best_axis = 0;
+        int best_bin = bin_count/2;
+        
+        AABB node_aabb = empty_aabb();
+        for(const auto& [idx, tri] : input){
+            node_aabb = extend_aabb(node_aabb, make_aabb(tri));
+        }
 
-  Node rightChild(int idx, int depth);
+        for(int bin = 0; bin < bin_count; ++bin){
+            for(int axis = 0; axis < 3; ++axis){
 
-  void build(const std::vector<Tri> *_fullTris);
+                float bin_pos = node_aabb.first[axis] + (node_aabb.second[axis] - node_aabb.first[axis]) * static_cast<float>(bin) / bin_count;
 
-  void buildAux(int depth, std::vector<BVHTri> *_tris);
+                AABB left_aabb = empty_aabb();
+                AABB right_aabb = empty_aabb();
+                int left_count = 0;
+                int right_count = 0;
 
-  static void dividePlane(std::vector<BVHTri> *tris,
-                          std::vector<BVHTri> *trisLeft,
-                          std::vector<BVHTri> *trisRight);
+                for(const auto& [idx, tri] : input){
+                    float c = (tri[axis] + tri[axis + 3] + tri[axis + 6]) / 3.0f;
+                    if(c < bin_pos){
+                        left_aabb = extend_aabb(left_aabb, make_aabb(tri));
+                        ++left_count;
+                    }else{
+                        right_aabb = extend_aabb(right_aabb, make_aabb(tri));
+                        ++right_count;
+                    }
+                }
 
-  static void divideSAH(std::vector<BVHTri> *tris,
-                        std::vector<BVHTri> *trisLeft,
-                        std::vector<BVHTri> *trisRight);
+                float cost = aabb_harea(left_aabb) * static_cast<float>(left_count) + aabb_harea(right_aabb) * static_cast<float>(right_count);
+                if(cost < min_cost){
+                    min_cost = cost;
+                    best_axis = axis;
+                    best_bin = bin;
+                }
+            }
+        }
 
-  static void boundsUnion(Vector3 b1, Vector3 b2, Vector3 b3, Vector3 b4,
-                          Vector3 &b5, Vector3 &b6);
+        float bin_pos = node_aabb.first[best_axis] + (node_aabb.second[best_axis] - node_aabb.first[best_axis]) * static_cast<float>(best_bin) / bin_count;
 
-  static float boundsArea(Vector3 b1, Vector3 b2);
+        for(int i = 0; i < input.size(); ++i){
+            float c = (input[i].second[best_axis] + input[i].second[best_axis + 3] + input[i].second[best_axis + 6]) / 3.0f;
+            if(c < bin_pos){
+                left.push_back(input[i]);
+            }else{
+                right.push_back(input[i]);
+            }
+        }
+        
+        if(left.empty() || right.empty()){
+            left.clear();
+            right.clear();
+            for(int i = 0; i < input.size(); ++i){
+                if(i < input.size() / 2){
+                    left.push_back(input[i]);
+                }else{
+                    right.push_back(input[i]);
+                }
+            }
+        }
+    }
+    
+    static uint32_t build_aux(const IdxTriVector &input, std::vector<Node>& node_vector){
 
-  static void bounds(Tri tri, Vector3 &b1, Vector3 &b2);
+        const uint32_t my_idx = static_cast<uint32_t>(node_vector.size());
+        node_vector.emplace_back();      
 
-  static void bounds(std::vector<BVHTri> *tris, Vector3 &b1, Vector3 &b2);
+        if(input.empty()){
+            node_vector[my_idx].is_leaf = true;
+        }else if(input.size() == 1){
+            node_vector[my_idx].is_leaf = true;
+            node_vector[my_idx].tri = input[0].first;
+            node_vector[my_idx].bounds = make_aabb(input[0].second);
+        } else {
+            node_vector[my_idx].is_leaf = false;
+            AABB bounds = empty_aabb();
+            for(auto& tri : input){
+                bounds = extend_aabb(bounds, make_aabb(tri.second));
+            }
+            node_vector[my_idx].bounds = bounds;
+            IdxTriVector left;
+            IdxTriVector right;
+            divide_sah(input, left, right);
+            node_vector[my_idx].left = build_aux(left, node_vector);
+            node_vector[my_idx].right = build_aux(right, node_vector);
+        }
+        return my_idx;
+    }
+
+    void build(const std::vector<Tri> &tris){
+
+        std::vector<Node> node_vector;
+
+        IdxTriVector idx_tris;
+        m_tris = new Tri[tris.size()];
+
+        for(uint32_t i = 0; i < tris.size(); i++){
+            m_tris[i] = tris[i];
+            idx_tris.push_back(std::make_pair(i, tris[i]));
+        }
+
+        build_aux(idx_tris, node_vector);
+
+        m_nodes = new Node[node_vector.size()];
+        std::copy(node_vector.begin(), node_vector.end(), m_nodes); 
+        m_node_count = node_vector.size();
+
+    }
+
+    static bool ray_box_intersect(const Ray& ray, const std::array<float, 3>& b_min, const std::array<float, 3>& b_max){
+        std::array<float, 3> dirfrac;
+
+        dirfrac[0] = 1.0f / ray.direction[0];
+        dirfrac[1] = 1.0f / ray.direction[1];
+        dirfrac[2] = 1.0f / ray.direction[2];
+      
+        float t1 = (b_min[0] - ray.origin[0]) * dirfrac[0];
+        float t2 = (b_max[0] - ray.origin[0]) * dirfrac[0];
+        float t3 = (b_min[1] - ray.origin[1]) * dirfrac[1];
+        float t4 = (b_max[1] - ray.origin[1]) * dirfrac[1];
+        float t5 = (b_min[2] - ray.origin[2]) * dirfrac[2];
+        float t6 = (b_max[2] - ray.origin[2]) * dirfrac[2];
+      
+        float tmin =
+            std::max(std::max(std::min(t1, t2), std::min(t3, t4)), std::min(t5, t6));
+        float tmax =
+            std::min(std::min(std::max(t1, t2), std::max(t3, t4)), std::max(t5, t6));
+      
+        if (tmax < 0) {
+          return false;
+        }
+
+        if (tmin > tmax) {
+          return false;
+        }
+      
+        return true;
+    }
+
+    std::pair<uint32_t, float> nearest_tri(const Ray& ray){
+
+        constexpr uint32_t k_stacksize = 1024;
+        uint32_t node_stack[k_stacksize];
+
+        uint32_t stack_idx = 0;
+        node_stack[stack_idx++] = 0;
+
+        float t_near = std::numeric_limits<float>::infinity();
+        uint32_t nearest_tri_idx = -1;
+        
+        while(stack_idx > 0){
+            uint32_t node_idx = node_stack[--stack_idx];
+            const Node& node = m_nodes[node_idx];
+            if(!ray_box_intersect(ray, node.bounds.first, node.bounds.second)){
+                continue;
+            }
+            if(node.is_leaf){
+                if(node.tri == -1){
+                    continue;
+                }
+                float t = intersect_tri(m_tris[node.tri], ray);
+                if(t < t_near){
+                    t_near = t;
+                    nearest_tri_idx = node.tri;
+                }
+            } else {
+                node_stack[stack_idx++] = node.left;
+                node_stack[stack_idx++] = node.right;
+            }
+        }
+
+        return std::make_pair(nearest_tri_idx, t_near);
+    }
+
+    size_t m_node_count = 0;
+    Node* m_nodes = nullptr;
+    Tri* m_tris = nullptr;
 };
 
-} // namespace portableRT
+    
+}

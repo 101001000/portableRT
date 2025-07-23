@@ -25,16 +25,16 @@ void SYCLBackend::init() {
 void SYCLBackend::set_tris(const Tris &tris) {
   m_bvh.build(tris);
 
-  m_dbvh = sycl::malloc_device<temp::BVH2>(1, m_impl->m_q);
+  m_dbvh = sycl::malloc_device<BVH2>(1, m_impl->m_q);
   Tri *dev_tris = sycl::malloc_device<Tri>(tris.size(), m_impl->m_q);
   m_impl->m_q.memcpy(dev_tris, tris.data(), sizeof(Tri) * tris.size()).wait();
 
-  temp::BVH2::Node *dev_nodes = sycl::malloc_device<temp::BVH2::Node>(m_bvh.m_node_count, m_impl->m_q);
-  m_impl->m_q.memcpy(dev_nodes, m_bvh.m_nodes, sizeof(temp::BVH2::Node) * m_bvh.m_node_count).wait();
+  BVH2::Node *dev_nodes = sycl::malloc_device<BVH2::Node>(m_bvh.m_node_count, m_impl->m_q);
+  m_impl->m_q.memcpy(dev_nodes, m_bvh.m_nodes, sizeof(BVH2::Node) * m_bvh.m_node_count).wait();
 
-  m_impl->m_q.memcpy(m_dbvh, &m_bvh, sizeof(temp::BVH2)).wait();
+  m_impl->m_q.memcpy(m_dbvh, &m_bvh, sizeof(BVH2)).wait();
   m_impl->m_q.memcpy(&(m_dbvh->m_tris), &(dev_tris), sizeof(Tri *)).wait();
-  m_impl->m_q.memcpy(&(m_dbvh->m_nodes), &(dev_nodes), sizeof(temp::BVH2::Node *))
+  m_impl->m_q.memcpy(&(m_dbvh->m_nodes), &(dev_nodes), sizeof(BVH2::Node *))
       .wait();
 }
 
@@ -46,7 +46,7 @@ std::vector<HitReg> SYCLBackend::nearest_hits(const std::vector<Ray> &rays) {
     Ray *rays_dev = sycl::malloc_device<Ray>(rays.size(), m_impl->m_q);
     m_impl->m_q.memcpy(rays_dev, rays.data(), sizeof(Ray) * rays.size()).wait();
 
-    temp::BVH2 *bvh = m_dbvh;
+    BVH2 *bvh = m_dbvh;
 
     m_impl->m_q
         .submit([&](sycl::handler &cgh) {

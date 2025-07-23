@@ -1,7 +1,6 @@
 #pragma once
 #include "backend.hpp"
 #include "bvh.hpp"
-#include "bvh2.hpp"
 #include "core.hpp"
 
 namespace portableRT {
@@ -18,8 +17,6 @@ public:
   std::string device_name() const override;
 
 private:
-  Tris m_tris;
-  uint64_t m_rootidx;
   void *m_dbvh;
 };
 

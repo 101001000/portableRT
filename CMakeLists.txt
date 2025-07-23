@@ -14,7 +14,7 @@ option(USE_EMBREE_CPU "Enable Embree CPU backend" OFF)
 option(USE_SYCL "Enable SYCL backend" OFF)
 
 # All the files that don't require an specific compiler
-add_library(portableRT src/portableRT.cpp src/intersect_cpu.cpp src/bvh.cpp)
+add_library(portableRT src/portableRT.cpp src/intersect_cpu.cpp)
 
 target_include_directories(portableRT PUBLIC ${CMAKE_BINARY_DIR}/include)
 
@@ -144,7 +144,7 @@ endif()
 if(USE_SYCL)
     message(STATUS "Building with SYCL support")
     target_compile_definitions(portableRT PUBLIC USE_SYCL)
-    add_library(portableRT_sycl OBJECT src/intersect_sycl.cpp src/bvh.cpp)
+    add_library(portableRT_sycl OBJECT src/intersect_sycl.cpp)
 
     target_compile_options(portableRT_sycl PRIVATE -fsycl -Xclang -fsycl-allow-func-ptr -Wno-deprecated-declarations) 
     target_link_options(portableRT_sycl  PUBLIC -fsycl)

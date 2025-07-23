@@ -7,7 +7,7 @@
 namespace portableRT {
 
 void check_hit(int i, const std::vector<Ray> &rays,
-               std::vector<HitReg> &hits, int N, temp::BVH2 &m_bvh) {
+               std::vector<HitReg> &hits, int N, BVH2 &m_bvh) {
   for (int r = 0; r < N; r++) {
     auto [nearest_tri_idx, t] = m_bvh.nearest_tri(rays[i + r]);
 
