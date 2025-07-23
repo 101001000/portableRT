@@ -47,15 +47,86 @@ public:
         return bounds;
     }
 
+    // Half area of a AABB
+    static float aabb_harea(const AABB& aabb){
+        const float dx = aabb.second[0] - aabb.first[0];
+        const float dy = aabb.second[1] - aabb.first[1];
+        const float dz = aabb.second[2] - aabb.first[2];
+        return (dx*dy + dx*dz + dy*dz);
+    }
 
-
-    static void divide_sah(const IdxTriVector &input, IdxTriVector &left, IdxTriVector &right) {
-        // TODO
+    static void divide_sah2(const IdxTriVector &input, IdxTriVector &left, IdxTriVector &right) {
         for(int i = 0; i < input.size(); ++i){
             if(i < input.size() / 2){
                 left.push_back(input[i]);
             }else{
                 right.push_back(input[i]);
+            }
+        }
+    }
+
+    static void divide_sah(const IdxTriVector &input, IdxTriVector &left, IdxTriVector &right) {
+
+        constexpr size_t bin_count = 14;
+        float min_cost = std::numeric_limits<float>::max();
+        int best_axis = 0;
+        int best_bin = bin_count/2;
+        
+        AABB node_aabb = empty_aabb();
+        for(const auto& [idx, tri] : input){
+            node_aabb = extend_aabb(node_aabb, make_aabb(tri));
+        }
+
+        for(int bin = 0; bin < bin_count; ++bin){
+            for(int axis = 0; axis < 3; ++axis){
+
+                float bin_pos = node_aabb.first[axis] + (node_aabb.second[axis] - node_aabb.first[axis]) * static_cast<float>(bin) / bin_count;
+
+                AABB left_aabb = empty_aabb();
+                AABB right_aabb = empty_aabb();
+                int left_count = 0;
+                int right_count = 0;
+
+                for(const auto& [idx, tri] : input){
+                    float c = (tri[axis] + tri[axis + 3] + tri[axis + 6]) / 3.0f;
+                    if(c < bin_pos){
+                        left_aabb = extend_aabb(left_aabb, make_aabb(tri));
+                        ++left_count;
+                    }else{
+                        right_aabb = extend_aabb(right_aabb, make_aabb(tri));
+                        ++right_count;
+                    }
+                }
+
+                float cost = aabb_harea(left_aabb) * static_cast<float>(left_count) + aabb_harea(right_aabb) * static_cast<float>(right_count);
+                if(cost < min_cost){
+                    min_cost = cost;
+                    best_axis = axis;
+                    best_bin = bin;
+                }
+            }
+        }
+
+        float bin_pos = node_aabb.first[best_axis] + (node_aabb.second[best_axis] - node_aabb.first[best_axis]) * static_cast<float>(best_bin) / bin_count;
+
+        for(int i = 0; i < input.size(); ++i){
+            float c = (input[i].second[best_axis] + input[i].second[best_axis + 3] + input[i].second[best_axis + 6]) / 3.0f;
+            if(c < bin_pos){
+                left.push_back(input[i]);
+            }else{
+                right.push_back(input[i]);
+            }
+        }
+        
+        if(left.empty() || right.empty()){
+            left.clear();
+            right.clear();
+            for(int i = 0; i < input.size(); ++i){
+                if(i < input.size() / 2){
+                    left.push_back(input[i]);
+                }else{
+                    right.push_back(input[i]);
+                }
             }
         }
     }
@@ -137,7 +208,7 @@ public:
 
     std::pair<uint32_t, float> nearest_tri(const Ray& ray){
 
-        constexpr uint32_t k_stacksize = 64;
+        constexpr uint32_t k_stacksize = 1024;
         uint32_t node_stack[k_stacksize];
 
         uint32_t stack_idx = 0;
@@ -147,16 +218,15 @@ public:
         uint32_t nearest_tri_idx = -1;
         
         while(stack_idx > 0){
-            if(stack_idx >= k_stacksize){
-                std::cout << "OVERFLOW" << std::endl;
-                break;
-            }
             uint32_t node_idx = node_stack[--stack_idx];
             const Node& node = nodes[node_idx];
             if(!ray_box_intersect(ray, node.bounds.first, node.bounds.second)){
                 continue;
             }
             if(node.is_leaf){
+                if(node.tri == -1){
+                    continue;
+                }
                 float t = intersect_tri(m_tris[node.tri], ray);
                 if(t < t_near){
                     t_near = t;
