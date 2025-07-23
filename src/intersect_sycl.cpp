@@ -23,26 +23,18 @@ void SYCLBackend::init() {
 
 // TODO: free this
 void SYCLBackend::set_tris(const Tris &tris) {
-  m_tris = tris;
+  m_bvh.build(tris);
 
-  m_bvh = new BVH();
-  m_bvh->triIndices = new int[tris.size()];
-  m_bvh->tris = m_tris.data();
-  m_bvh->build(&tris);
-
-  m_dbvh = sycl::malloc_device<BVH>(1, m_impl->m_q);
-
-  int *dev_triIndices = sycl::malloc_device<int>(tris.size(), m_impl->m_q);
-  m_impl->m_q
-      .memcpy(dev_triIndices, m_bvh->triIndices, sizeof(int) * tris.size())
-      .wait();
-
+  m_dbvh = sycl::malloc_device<temp::BVH2>(1, m_impl->m_q);
   Tri *dev_tris = sycl::malloc_device<Tri>(tris.size(), m_impl->m_q);
-  m_impl->m_q.memcpy(dev_tris, m_tris.data(), sizeof(Tri) * tris.size()).wait();
+  m_impl->m_q.memcpy(dev_tris, tris.data(), sizeof(Tri) * tris.size()).wait();
 
-  m_impl->m_q.memcpy(m_dbvh, m_bvh, sizeof(BVH)).wait();
-  m_impl->m_q.memcpy(&(m_dbvh->tris), &(dev_tris), sizeof(Tri *)).wait();
-  m_impl->m_q.memcpy(&(m_dbvh->triIndices), &(dev_triIndices), sizeof(int *))
+  temp::BVH2::Node *dev_nodes = sycl::malloc_device<temp::BVH2::Node>(m_bvh.m_node_count, m_impl->m_q);
+  m_impl->m_q.memcpy(dev_nodes, m_bvh.m_nodes, sizeof(temp::BVH2::Node) * m_bvh.m_node_count).wait();
+
+  m_impl->m_q.memcpy(m_dbvh, &m_bvh, sizeof(temp::BVH2)).wait();
+  m_impl->m_q.memcpy(&(m_dbvh->m_tris), &(dev_tris), sizeof(Tri *)).wait();
+  m_impl->m_q.memcpy(&(m_dbvh->m_nodes), &(dev_nodes), sizeof(temp::BVH2::Node *))
       .wait();
 }
 
@@ -54,18 +46,16 @@ std::vector<HitReg> SYCLBackend::nearest_hits(const std::vector<Ray> &rays) {
     Ray *rays_dev = sycl::malloc_device<Ray>(rays.size(), m_impl->m_q);
     m_impl->m_q.memcpy(rays_dev, rays.data(), sizeof(Ray) * rays.size()).wait();
 
-    BVH *bvh = m_dbvh;
+    temp::BVH2 *bvh = m_dbvh;
 
     m_impl->m_q
         .submit([&](sycl::handler &cgh) {
           cgh.parallel_for(sycl::range<1>(rays.size()), [=](sycl::id<1> id) {
-            Hit hit;
-            hit.valid = false;
-            bvh->transverse(rays_dev[id], hit);
-            res[id].t =
-                hit.valid ? hit.t : std::numeric_limits<float>::infinity();
-            res[id].primitive_id =
-                hit.valid ? hit.triIdx : static_cast<uint32_t>(-1);
+            auto [nearest_tri_idx, t] = bvh->nearest_tri(rays_dev[id]);
+            HitReg hitReg;
+            hitReg.t = t;
+            hitReg.primitive_id = nearest_tri_idx;
+            res[id] = hitReg;
           });
         })
         .wait();

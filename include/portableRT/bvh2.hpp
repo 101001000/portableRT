@@ -55,16 +55,6 @@ public:
         return (dx*dy + dx*dz + dy*dz);
     }
 
-    static void divide_sah2(const IdxTriVector &input, IdxTriVector &left, IdxTriVector &right) {
-        for(int i = 0; i < input.size(); ++i){
-            if(i < input.size() / 2){
-                left.push_back(input[i]);
-            }else{
-                right.push_back(input[i]);
-            }
-        }
-    }
-
     static void divide_sah(const IdxTriVector &input, IdxTriVector &left, IdxTriVector &right) {
 
         constexpr size_t bin_count = 14;
@@ -163,16 +153,18 @@ public:
         std::vector<Node> node_vector;
 
         IdxTriVector idx_tris;
+        m_tris = new Tri[tris.size()];
 
         for(uint32_t i = 0; i < tris.size(); i++){
-            m_tris.push_back(tris[i]);
+            m_tris[i] = tris[i];
             idx_tris.push_back(std::make_pair(i, tris[i]));
         }
 
         build_aux(idx_tris, node_vector);
 
-        nodes = new Node[node_vector.size()];
-        std::copy(node_vector.begin(), node_vector.end(), nodes); 
+        m_nodes = new Node[node_vector.size()];
+        std::copy(node_vector.begin(), node_vector.end(), m_nodes); 
+        m_node_count = node_vector.size();
 
     }
 
@@ -219,7 +211,7 @@ public:
         
         while(stack_idx > 0){
             uint32_t node_idx = node_stack[--stack_idx];
-            const Node& node = nodes[node_idx];
+            const Node& node = m_nodes[node_idx];
             if(!ray_box_intersect(ray, node.bounds.first, node.bounds.second)){
                 continue;
             }
@@ -240,9 +232,10 @@ public:
 
         return std::make_pair(nearest_tri_idx, t_near);
     }
-private:
-    Node* nodes = nullptr;
-    std::vector<Tri> m_tris;
+
+    size_t m_node_count = 0;
+    Node* m_nodes = nullptr;
+    Tri* m_tris = nullptr;
 };
 
     

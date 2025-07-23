@@ -2,7 +2,7 @@
 #include <memory>
 
 #include "backend.hpp"
-#include "bvh.hpp"
+#include "bvh2.hpp"
 #include "core.hpp"
 
 namespace portableRT {
@@ -27,9 +27,8 @@ private:
   // the .cpp instead the .h so the hip compiler ignores the sycl headers. Other
   // option is to pack the sycl headers, but that would break sycl dependency.
   std::unique_ptr<SYCLBackendImpl> m_impl;
-  Tris m_tris;
-  BVH *m_dbvh;
-  BVH *m_bvh;
+  temp::BVH2 m_bvh;
+  temp::BVH2* m_dbvh;
 };
 
 static SYCLBackend sycl_backend;
