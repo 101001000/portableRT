@@ -185,6 +185,61 @@ void push_bytes(std::vector<uint8_t> &v, const void *p, size_t n) {
   v.insert(v.end(), s, s + n);
 }
 
+void parse_bvh3(temp::BVH2 *bvh, std::vector<uint8_t> &data){
+
+
+  auto make_f3 = [](const Vector3 &v) { return float3(v[0], v[1], v[2]); };
+
+  std::vector<uint32_t> offsets;
+  std::vector<uint32_t> parents(bvh->m_node_count, InvalidValue);
+  offsets.reserve(bvh->m_node_count);
+  uint32_t offset = 0;
+
+  for(int i = 0; i < bvh->m_node_count; i++){
+    const auto node = bvh->m_nodes[i];
+    offsets.push_back(offset);
+    if(!node.is_leaf){
+      parents[node.left] = i;
+      parents[node.right] = i;
+    }
+    offset += node.is_leaf ? sizeof(TriangleNode) : sizeof(BoxNode);
+  }
+
+  for(int i = 0; i < bvh->m_node_count; i++){
+    const auto node = bvh->m_nodes[i];
+    if(node.is_leaf){
+      TriangleNode leaf{};
+      leaf.m_flags = (1 << 2) | (1 << 0);
+      if(node.tri != -1){
+        Tri tri = bvh->m_tris[node.tri];
+        leaf.m_triPair.m_v0 = {tri[0], tri[1], tri[2]};
+        leaf.m_triPair.m_v1 = {tri[3], tri[4], tri[5]};
+        leaf.m_triPair.m_v2 = {tri[6], tri[7], tri[8]};
+      }
+      push_bytes(data, &leaf, sizeof(leaf));
+    }else{
+
+      temp::BVH2::Node left = bvh->m_nodes[node.left];
+      temp::BVH2::Node right = bvh->m_nodes[node.right];
+
+      BoxNode box{};      
+      box.m_childCount = 2;
+
+      box.m_box0 = Aabb(make_f3(left.bounds.first), make_f3(left.bounds.second));
+      box.m_box1 = Aabb(make_f3(right.bounds.first), make_f3(right.bounds.second));
+
+      box.m_childIndex0 = left.is_leaf ? (offsets[node.left] >> 3) : (offsets[node.left] >> 3) + 5;
+      box.m_childIndex1 = right.is_leaf ? (offsets[node.right] >> 3) : (offsets[node.right] >> 3) + 5;
+
+      if(parents[i] != InvalidValue){
+        box.m_parentAddr = (offsets[parents[i]] >> 3) + 5;
+      }
+
+      push_bytes(data, &box, sizeof(box));
+    }
+  }
+}
+
 void parse_bvh(BVH *bvh, Node node, std::vector<uint8_t> &data, int &offset,
                uint32_t parentAddr) {
 
@@ -364,15 +419,11 @@ std::unique_ptr<ExNode> make_extended_tree(BVH *bvh) {
   return std::move(root);
 }
 
-void *parse_bvh(BVH *bvh, uint64_t &rootidx) {
+void *parse_bvh(temp::BVH2 *bvh) {
 
   std::vector<uint8_t> buff{};
 
-  std::unique_ptr<ExNode> root = make_extended_tree(bvh);
-  process(root.get(), buff);
-
-  rootidx = root->idx;
-  // std::cout << "root idx " << rootidx << std::endl;
+  parse_bvh3(bvh, buff);
 
   void *d_bvh;
   CHK(hipMalloc(&d_bvh, buff.size()));
@@ -413,14 +464,10 @@ void HIPBackend::set_tris(const Tris &tris) {
 
   m_tris = tris;
 
-  BVH *bvh = new BVH();
-  bvh->triIndices = new int[tris.size()];
-  bvh->tris = m_tris.data();
-  bvh->build(&m_tris);
+  temp::BVH2 bvh;
+  bvh.build(tris);
 
-  m_dbvh = parse_bvh(bvh, m_rootidx);
-  delete[] bvh->triIndices;
-  delete (bvh);
+  m_dbvh = parse_bvh(&bvh);
 }
 
 std::vector<HitReg> HIPBackend::nearest_hits(const std::vector<Ray> &rays) {
@@ -436,7 +483,7 @@ std::vector<HitReg> HIPBackend::nearest_hits(const std::vector<Ray> &rays) {
   int blocks = (rays.size() + block_size - 1) / block_size;
 
   nearest_hit<<<blocks, block_size>>>(m_dbvh, dHit, dRays, 1000000000,
-                                      m_rootidx, rays.size());
+                                      5, rays.size());
   CHK(hipDeviceSynchronize());
   HitReg *hHit = new HitReg[rays.size()];
   CHK(hipMemcpy(hHit, dHit, sizeof(HitReg) * rays.size(),

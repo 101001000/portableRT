@@ -1,6 +1,7 @@
 #pragma once
 #include "backend.hpp"
 #include "bvh.hpp"
+#include "bvh2.hpp"
 #include "core.hpp"
 
 namespace portableRT {
