@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(portableRT VERSION 0.3.1)
+project(portableRT VERSION 0.3.2)
 
 configure_file(
   version.hpp.in
