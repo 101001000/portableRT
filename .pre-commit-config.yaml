@@ -1,0 +1,6 @@
+repos:
+  - repo: https://github.com/cpp-linter/cpp-linter-hooks
+    rev: v1.0.1            # etiqueta que quieras
+    hooks:
+      - id: clang-format
+        args: [--style=file, --version=18, -i]

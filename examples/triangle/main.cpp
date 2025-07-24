@@ -7,7 +7,7 @@ int main() {
   std::array<float, 9> vertices = {-1, -1, 0, 1, -1, 0, 0, 1, 0};
 
   portableRT::Ray hit_ray;
-  hit_ray.origin = std::array<float, 3>{0, 0, -1};
+  hit_ray.origin = std::array<float, 3>{0.1, 0, -1};
   hit_ray.direction = std::array<float, 3>{0, 0, 1};
 
   portableRT::Ray miss_ray;
@@ -24,10 +24,12 @@ int main() {
     std::cout << "Ray 1: "
               << (hits1[0].t == std::numeric_limits<float>::infinity() ? "miss"
                                                                        : "hit")
-              << "\nRay 2: "
+              << " " << hits1[0].u << " " << hits1[0].v << " "
+              << hits1[0].primitive_id << "\nRay 2: "
               << (hits2[0].t == std::numeric_limits<float>::infinity() ? "miss"
                                                                        : "hit")
-              << std::endl;
+              << " " << hits2[0].u << " " << hits2[0].v << " "
+              << hits2[0].primitive_id << std::endl;
   }
 
   return 0;

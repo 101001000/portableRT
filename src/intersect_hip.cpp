@@ -118,6 +118,28 @@ __device__ __host__ static uint64_t encodeBaseAddr(const void *baseAddr,
   return baseIndex + nodeIndex;
 }
 
+__device__ float2 barycentrics(float3 v0, float3 v1, float3 v2, float3 p) {
+  float3 e0 = v1 - v0;
+  float3 e1 = v2 - v0;
+  float3 d = p - v0;
+
+  auto dot = [](float3 a, float3 b) {
+    return a.x * b.x + a.y * b.y + a.z * b.z;
+  };
+
+  float d00 = dot(e0, e0);
+  float d01 = dot(e0, e1);
+  float d11 = dot(e1, e1);
+  float d20 = dot(d, e0);
+  float d21 = dot(d, e1);
+
+  float denom = d00 * d11 - d01 * d01;
+  float v = (d11 * d20 - d01 * d21) / denom;
+  float w = (d00 * d21 - d01 * d20) / denom;
+  float u = 1.0 - v - w;
+  return {u, v};
+}
+
 __global__ void nearest_hit(void *bvh, portableRT::HitReg *out,
                             portableRT::Ray *rays, uint64_t size, uint64_t pos,
                             uint64_t num_rays) {
@@ -147,8 +169,9 @@ __global__ void nearest_hit(void *bvh, portableRT::HitReg *out,
   stack[1] = InvalidValue;
   int stack_ptr = 0;
 
-  float hit = std::numeric_limits<float>::infinity();
+  float t_near = std::numeric_limits<float>::infinity();
   uint32_t id = InvalidValue;
+  float u, v;
 
   while (stack_ptr >= 0) {
 
@@ -170,12 +193,24 @@ __global__ void nearest_hit(void *bvh, portableRT::HitReg *out,
       }
     } else {
       float t = __int_as_float(res[0]) / __int_as_float(res[1]);
-      hit = std::min(hit, t);
-      id = res[2];
+      if (t < t_near) {
+        t_near = t;
+        id = res[2];
+        const TriangleNode *node = reinterpret_cast<const TriangleNode *>(
+            static_cast<uint8_t *>(bvh) + stack[stack_ptr]);
+        float3 v0 = node->m_triPair.m_v0;
+        float3 v1 = node->m_triPair.m_v1;
+        float3 v2 = node->m_triPair.m_v2;
+        float3 p = {ray_o.x + ray_d.x * t, ray_o.y + ray_d.y * t,
+                    ray_o.z + ray_d.z * t};
+        float2 bary = barycentrics(v0, v1, v2, p);
+        u = bary.x;
+        v = bary.y;
+      }
     }
   }
 
-  out[idx] = {hit, id};
+  out[idx] = {t_near, u, v, id};
 }
 
 namespace portableRT {
@@ -185,53 +220,58 @@ void push_bytes(std::vector<uint8_t> &v, const void *p, size_t n) {
   v.insert(v.end(), s, s + n);
 }
 
-void parse_bvh3(BVH2 *bvh, std::vector<uint8_t> &data){
+void parse_bvh3(BVH2 *bvh, std::vector<uint8_t> &data) {
 
-
-  auto make_f3 = [](const std::array<float, 3> &v) { return float3(v[0], v[1], v[2]); };
+  auto make_f3 = [](const std::array<float, 3> &v) {
+    return float3(v[0], v[1], v[2]);
+  };
 
   std::vector<uint32_t> offsets;
   std::vector<uint32_t> parents(bvh->m_node_count, InvalidValue);
   offsets.reserve(bvh->m_node_count);
   uint32_t offset = 0;
 
-  for(int i = 0; i < bvh->m_node_count; i++){
+  for (int i = 0; i < bvh->m_node_count; i++) {
     const auto node = bvh->m_nodes[i];
     offsets.push_back(offset);
-    if(!node.is_leaf){
+    if (!node.is_leaf) {
       parents[node.left] = i;
       parents[node.right] = i;
     }
     offset += node.is_leaf ? sizeof(TriangleNode) : sizeof(BoxNode);
   }
 
-  for(int i = 0; i < bvh->m_node_count; i++){
+  for (int i = 0; i < bvh->m_node_count; i++) {
     const auto node = bvh->m_nodes[i];
-    if(node.is_leaf){
+    if (node.is_leaf) {
       TriangleNode leaf{};
       leaf.m_flags = (1 << 2) | (1 << 0);
-      if(node.tri != -1){
+      if (node.tri != -1) {
         Tri tri = bvh->m_tris[node.tri];
         leaf.m_triPair.m_v0 = {tri[0], tri[1], tri[2]};
         leaf.m_triPair.m_v1 = {tri[3], tri[4], tri[5]};
         leaf.m_triPair.m_v2 = {tri[6], tri[7], tri[8]};
       }
       push_bytes(data, &leaf, sizeof(leaf));
-    }else{
+    } else {
 
       BVH2::Node left = bvh->m_nodes[node.left];
       BVH2::Node right = bvh->m_nodes[node.right];
 
-      BoxNode box{};      
+      BoxNode box{};
       box.m_childCount = 2;
 
-      box.m_box0 = Aabb(make_f3(left.bounds.first), make_f3(left.bounds.second));
-      box.m_box1 = Aabb(make_f3(right.bounds.first), make_f3(right.bounds.second));
+      box.m_box0 =
+          Aabb(make_f3(left.bounds.first), make_f3(left.bounds.second));
+      box.m_box1 =
+          Aabb(make_f3(right.bounds.first), make_f3(right.bounds.second));
 
-      box.m_childIndex0 = left.is_leaf ? (offsets[node.left] >> 3) : (offsets[node.left] >> 3) + 5;
-      box.m_childIndex1 = right.is_leaf ? (offsets[node.right] >> 3) : (offsets[node.right] >> 3) + 5;
+      box.m_childIndex0 = left.is_leaf ? (offsets[node.left] >> 3)
+                                       : (offsets[node.left] >> 3) + 5;
+      box.m_childIndex1 = right.is_leaf ? (offsets[node.right] >> 3)
+                                        : (offsets[node.right] >> 3) + 5;
 
-      if(parents[i] != InvalidValue){
+      if (parents[i] != InvalidValue) {
         box.m_parentAddr = (offsets[parents[i]] >> 3) + 5;
       }
 
@@ -253,7 +293,6 @@ void *parse_bvh(BVH2 *bvh) {
   return d_bvh;
 }
 
-
 void HIPBackend::set_tris(const Tris &tris) {
   BVH2 bvh;
   bvh.build(tris);
@@ -272,8 +311,8 @@ std::vector<HitReg> HIPBackend::nearest_hits(const std::vector<Ray> &rays) {
   int block_size = 64;
   int blocks = (rays.size() + block_size - 1) / block_size;
 
-  nearest_hit<<<blocks, block_size>>>(m_dbvh, dHit, dRays, 1000000000,
-                                      5, rays.size());
+  nearest_hit<<<blocks, block_size>>>(m_dbvh, dHit, dRays, 1000000000, 5,
+                                      rays.size());
   CHK(hipDeviceSynchronize());
   HitReg *hHit = new HitReg[rays.size()];
   CHK(hipMemcpy(hHit, dHit, sizeof(HitReg) * rays.size(),

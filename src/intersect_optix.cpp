@@ -104,7 +104,7 @@ void OptiXBackend::init() {
   m_pco.exceptionFlags = OPTIX_EXCEPTION_FLAG_DEBUG |
                          OPTIX_EXCEPTION_FLAG_TRACE_DEPTH |
                          OPTIX_EXCEPTION_FLAG_STACK_OVERFLOW;
-  m_pco.numPayloadValues = 2;
+  m_pco.numPayloadValues = 4;
   m_pco.numAttributeValues = 3;
   m_pco.pipelineLaunchParamsVariableName =
       "params"; // ← tu PTX declara .const params

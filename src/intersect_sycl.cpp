@@ -29,8 +29,11 @@ void SYCLBackend::set_tris(const Tris &tris) {
   Tri *dev_tris = sycl::malloc_device<Tri>(tris.size(), m_impl->m_q);
   m_impl->m_q.memcpy(dev_tris, tris.data(), sizeof(Tri) * tris.size()).wait();
 
-  BVH2::Node *dev_nodes = sycl::malloc_device<BVH2::Node>(m_bvh.m_node_count, m_impl->m_q);
-  m_impl->m_q.memcpy(dev_nodes, m_bvh.m_nodes, sizeof(BVH2::Node) * m_bvh.m_node_count).wait();
+  BVH2::Node *dev_nodes =
+      sycl::malloc_device<BVH2::Node>(m_bvh.m_node_count, m_impl->m_q);
+  m_impl->m_q
+      .memcpy(dev_nodes, m_bvh.m_nodes, sizeof(BVH2::Node) * m_bvh.m_node_count)
+      .wait();
 
   m_impl->m_q.memcpy(m_dbvh, &m_bvh, sizeof(BVH2)).wait();
   m_impl->m_q.memcpy(&(m_dbvh->m_tris), &(dev_tris), sizeof(Tri *)).wait();
@@ -51,11 +54,8 @@ std::vector<HitReg> SYCLBackend::nearest_hits(const std::vector<Ray> &rays) {
     m_impl->m_q
         .submit([&](sycl::handler &cgh) {
           cgh.parallel_for(sycl::range<1>(rays.size()), [=](sycl::id<1> id) {
-            auto [nearest_tri_idx, t] = bvh->nearest_tri(rays_dev[id]);
-            HitReg hitReg;
-            hitReg.t = t;
-            hitReg.primitive_id = nearest_tri_idx;
-            res[id] = hitReg;
+            auto hit_reg = bvh->nearest_tri(rays_dev[id]);
+            res[id] = hit_reg;
           });
         })
         .wait();
