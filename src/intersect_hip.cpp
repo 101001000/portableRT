@@ -122,19 +122,23 @@ __device__ float2 barycentrics(float3 v0, float3 v1, float3 v2, float3 p) {
 	float3 e1 = v2 - v0;
 	float3 d = p - v0;
 
-	auto dot = [](float3 a, float3 b) { return a.x * b.x + a.y * b.y + a.z * b.z; };
-
-	float d00 = dot(e0, e0);
-	float d01 = dot(e0, e1);
-	float d11 = dot(e1, e1);
-	float d20 = dot(d, e0);
-	float d21 = dot(d, e1);
+	float d00 = e0.x * e0.x + e0.y * e0.y + e0.z * e0.z;
+	float d01 = e0.x * e1.x + e0.y * e1.y + e0.z * e1.z;
+	float d11 = e1.x * e1.x + e1.y * e1.y + e1.z * e1.z;
+	float d20 = d.x * e0.x + d.y * e0.y + d.z * e0.z;
+	float d21 = d.x * e1.x + d.y * e1.y + d.z * e1.z;
 
 	float denom = d00 * d11 - d01 * d01;
+
+	const float tol = 1e-8f;
+	if (fabsf(denom) < tol) {
+		return {1.0f, 0.0f};
+	}
+
 	float v = (d11 * d20 - d01 * d21) / denom;
 	float w = (d00 * d21 - d01 * d20) / denom;
-	float u = 1.0 - v - w;
-	return {u, v};
+
+	return {v, w};
 }
 
 __global__ void nearest_hit(void *bvh, portableRT::HitReg *out, portableRT::Ray *rays,
@@ -172,6 +176,8 @@ __global__ void nearest_hit(void *bvh, portableRT::HitReg *out, portableRT::Ray 
 	while (stack_ptr >= 0) {
 
 		uint32_t type = stack[stack_ptr] & 0x7;
+		uint64_t node_dir = (static_cast<uint64_t>(stack[stack_ptr]) * 8);
+
 		auto res = __builtin_amdgcn_image_bvh_intersect_ray_l(stack[stack_ptr], 100, ray_o.data,
 		                                                      ray_d.data, ray_id.data, desc.data);
 
@@ -191,9 +197,11 @@ __global__ void nearest_hit(void *bvh, portableRT::HitReg *out, portableRT::Ray 
 			float t = __int_as_float(res[0]) / __int_as_float(res[1]);
 			if (t < t_near) {
 				t_near = t;
-				id = res[2];
-				const TriangleNode *node = reinterpret_cast<const TriangleNode *>(
-				    static_cast<uint8_t *>(bvh) + stack[stack_ptr]);
+				id = res[2]; // TODO: wrong result (?)
+
+				const TriangleNode *node =
+				    reinterpret_cast<const TriangleNode *>(static_cast<uint8_t *>(bvh) + node_dir);
+
 				float3 v0 = node->m_triPair.m_v0;
 				float3 v1 = node->m_triPair.m_v1;
 				float3 v2 = node->m_triPair.m_v2;
