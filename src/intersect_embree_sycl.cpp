@@ -16,12 +16,6 @@ void enablePersistentJITCache() {
 const sycl::specialization_id<RTCFeatureFlags> feature_mask;
 const RTCFeatureFlags required_features = RTC_FEATURE_FLAG_TRIANGLE;
 
-struct Result {
-	unsigned geomID;
-	unsigned primID;
-	float tfar;
-};
-
 template <typename T>
 T *alignedSYCLMallocDeviceReadWrite(const sycl::queue &queue, size_t count, size_t align) {
 	if (count == 0)
@@ -73,7 +67,7 @@ RTCDevice initializeDevice(sycl::context &sycl_context, sycl::device &sycl_devic
 }
 
 void castRay(sycl::queue &queue, const RTCTraversable traversable,
-             const std::vector<portableRT::Ray> &rays, Result *results) {
+             const std::vector<portableRT::Ray> &rays, portableRT::HitReg *results) {
 
 	portableRT::Ray *d_rays = sycl::malloc_device<portableRT::Ray>(rays.size(), queue);
 	queue.memcpy(d_rays, rays.data(), sizeof(portableRT::Ray) * rays.size());
@@ -122,9 +116,10 @@ void castRay(sycl::queue &queue, const RTCTraversable traversable,
 			    /*
 			     * write hit result to output buffer
 			     */
-			    results[item].geomID = rayhit.hit.geomID;
-			    results[item].primID = rayhit.hit.primID;
-			    results[item].tfar = rayhit.ray.tfar;
+			    results[item].t = rayhit.ray.tfar;
+			    results[item].primitive_id = rayhit.hit.primID;
+			    results[item].u = rayhit.hit.u;
+			    results[item].v = rayhit.hit.v;
 		    });
 	});
 	queue.wait_and_throw();
@@ -178,31 +173,11 @@ void EmbreeSYCLBackend::set_tris(const Tris &tris) {
 
 std::vector<HitReg> EmbreeSYCLBackend::nearest_hits(const std::vector<Ray> &rays) {
 	try {
-
-		std::vector<HitReg> hits;
-		Result *result = alignedSYCLMallocDeviceReadWrite<Result>(m_impl->m_q, rays.size(), 16);
-		// result->geomID = RTC_INVALID_GEOMETRY_ID;
-
-		/* This will hit the triangle at t=1. */
+		HitReg *result = sycl::malloc_shared<HitReg>(rays.size(), m_impl->m_q);
 		castRay(m_impl->m_q, m_rtctraversable, rays, result);
-
-		for (int i = 0; i < rays.size(); ++i) {
-
-			HitReg hit;
-
-			if (result[i].geomID == RTC_INVALID_GEOMETRY_ID) {
-				hit.t = std::numeric_limits<float>::infinity();
-				hit.primitive_id = static_cast<uint32_t>(-1);
-			} else {
-				hit.t = result[i].tfar;
-				hit.primitive_id = result[i].primID;
-			}
-
-			hits.push_back(hit);
-		}
-		alignedSYCLFree(m_impl->m_q, result);
+		std::vector<HitReg> hits(result, result + rays.size());
+		sycl::free(result, m_impl->m_q);
 		return hits;
-
 	} catch (sycl::_V1::exception &e) {
 		std::cout << e.what() << std::endl;
 		return std::vector<HitReg>(
