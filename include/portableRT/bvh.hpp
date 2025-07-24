@@ -162,12 +162,30 @@ class BVH2 {
 		IdxTriVector idx_tris;
 		m_tris = new Tri[tris.size()];
 
-		for (uint32_t i = 0; i < tris.size(); i++) {
-			m_tris[i] = tris[i];
-			idx_tris.push_back(std::make_pair(i, tris[i]));
-		}
+		if (tris.size() == 1) {
+			// Special case for single triangle trees.
+			m_tris[0] = tris[0];
+			node_vector.push_back(Node());
+			node_vector[0].is_leaf = false;
+			node_vector[0].tri = -1;
+			node_vector[0].bounds = make_aabb(tris[0]);
+			node_vector[0].left = 1;
+			node_vector[0].right = 2;
 
-		build_aux(idx_tris, node_vector);
+			node_vector.push_back(Node());
+			node_vector[1].is_leaf = true;
+			node_vector[1].tri = 0;
+			node_vector[1].bounds = make_aabb(tris[0]);
+
+			node_vector.push_back(Node());
+			node_vector[2].is_leaf = true;
+		} else {
+			for (uint32_t i = 0; i < tris.size(); i++) {
+				m_tris[i] = tris[i];
+				idx_tris.push_back(std::make_pair(i, tris[i]));
+			}
+			build_aux(idx_tris, node_vector);
+		}
 
 		m_nodes = new Node[node_vector.size()];
 		std::copy(node_vector.begin(), node_vector.end(), m_nodes);
