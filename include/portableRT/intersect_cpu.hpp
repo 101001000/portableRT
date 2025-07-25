@@ -10,26 +10,16 @@ class CPUBackend : public InvokableBackend<CPUBackend> {
 	CPUBackend() : InvokableBackend("CPU") { static RegisterBackend reg(*this); }
 
 	template <class... Tags>
-	static void check_hit(int i, const std::vector<Ray> &rays, std::vector<HitRegA<Tags...>> &hits,
+	static void check_hit(int i, const std::vector<Ray> &rays, std::vector<HitReg<Tags...>> &hits,
 	                      int N, BVH2 &m_bvh) {
 		for (int r = 0; r < N; r++) {
-			auto hit_reg = m_bvh.nearest_tri(rays[i + r]);
-			if constexpr (has_tag<filter::t, Tags...>) {
-				hits[i + r].t = hit_reg.t;
-			}
-			if constexpr (has_tag<filter::uv, Tags...>) {
-				hits[i + r].u = hit_reg.u;
-				hits[i + r].v = hit_reg.v;
-			}
-			if constexpr (has_tag<filter::primitive_id, Tags...>) {
-				hits[i + r].primitive_id = hit_reg.primitive_id;
-			}
+			hits[i + r] = m_bvh.template nearest_tri<Tags...>(rays[i + r]);
 		}
 	}
 
 	template <class... Tags>
-	std::vector<HitRegA<Tags...>> nearest_hits(const std::vector<Ray> &rays) {
-		std::vector<HitRegA<Tags...>> hits(rays.size());
+	std::vector<HitReg<Tags...>> nearest_hits(const std::vector<Ray> &rays) {
+		std::vector<HitReg<Tags...>> hits(rays.size());
 
 		clear_affinity();
 

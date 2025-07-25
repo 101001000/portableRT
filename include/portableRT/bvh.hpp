@@ -221,7 +221,7 @@ class BVH2 {
 		return true;
 	}
 
-	HitReg nearest_tri(const Ray &ray) {
+	template <class... Tags> HitReg<Tags...> nearest_tri(const Ray &ray) {
 
 		constexpr uint32_t k_stacksize = 1024;
 		uint32_t node_stack[k_stacksize];
@@ -229,9 +229,8 @@ class BVH2 {
 		uint32_t stack_idx = 0;
 		node_stack[stack_idx++] = 0;
 
-		HitReg hit_reg;
-		hit_reg.t = std::numeric_limits<float>::infinity();
-		hit_reg.primitive_id = -1;
+		HitReg<Tags...> hit_reg;
+		float t_near = std::numeric_limits<float>::infinity();
 
 		while (stack_idx > 0) {
 			uint32_t node_idx = node_stack[--stack_idx];
@@ -245,11 +244,15 @@ class BVH2 {
 				}
 				float t, u, v;
 				if (intersect_tri(m_tris[node.tri], ray, t, u, v)) {
-					if (t < hit_reg.t) {
-						hit_reg.t = t;
-						hit_reg.u = u;
-						hit_reg.v = v;
-						hit_reg.primitive_id = node.tri;
+					if (t < t_near) {
+						t_near = t;
+						if constexpr (has_tag<filter::uv, Tags...>) {
+							hit_reg.u = u;
+							hit_reg.v = v;
+						}
+						if constexpr (has_tag<filter::primitive_id, Tags...>) {
+							hit_reg.primitive_id = node.tri;
+						}
 					}
 				}
 			} else {
@@ -257,7 +260,9 @@ class BVH2 {
 				node_stack[stack_idx++] = node.right;
 			}
 		}
-
+		if constexpr (has_tag<filter::t, Tags...>) {
+			hit_reg.t = t_near;
+		}
 		return hit_reg;
 	}
 

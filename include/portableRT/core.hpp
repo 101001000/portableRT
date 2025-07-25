@@ -20,16 +20,9 @@ struct Ray {
 	std::array<float, 3> direction;
 };
 
-struct HitReg {
-	float t;
-	float u;
-	float v;
-	uint32_t primitive_id;
-};
-
 struct Empty {};
 
-template <bool HasUV, bool HasT, bool HasPrimitiveId> struct HitReg2 {
+template <bool HasUV, bool HasT, bool HasPrimitiveId> struct HitRegImpl {
 	using has_uv = std::bool_constant<HasUV>;
 	using has_t = std::bool_constant<HasT>;
 	using has_primitive_id = std::bool_constant<HasPrimitiveId>;
@@ -49,10 +42,10 @@ struct primitive_id {};
 } // namespace filter
 
 template <class... Tags>
-using HitRegA = HitReg2<has_tag<filter::uv, Tags...>, has_tag<filter::t, Tags...>,
-                        has_tag<filter::primitive_id, Tags...>>;
+using HitReg = HitRegImpl<has_tag<filter::uv, Tags...>, has_tag<filter::t, Tags...>,
+                          has_tag<filter::primitive_id, Tags...>>;
 
-using FullTags = HitRegA<filter::uv, filter::t, filter::primitive_id>;
+using FullTags = HitReg<filter::uv, filter::t, filter::primitive_id>;
 
 using Tri = std::array<float, 9>;
 using Tris = std::vector<Tri>;

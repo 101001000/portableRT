@@ -9,8 +9,6 @@
 
 namespace portableRT {
 
-using NearestHitsDispatchFn = std::vector<HitReg> (*)(void *, const std::vector<Ray> &);
-
 class Backend {
   public:
 	Backend(std::string name, void *self_ptr) : name_{std::move(name)}, self_{self_ptr} {}
@@ -75,10 +73,9 @@ using BackendVar = std::variant<
 inline BackendVar var_selected{static_cast<CPUBackend *>(nullptr)};
 
 template <class... Tags>
-inline std::vector<HitRegA<Tags...>> nearest_hits(const std::vector<Ray> &rays) {
-	using Reg = HitRegA<Tags...>;
+inline std::vector<HitReg<Tags...>> nearest_hits(const std::vector<Ray> &rays) {
 	return std::visit(
-	    [&](auto *ptr) -> std::vector<Reg> {
+	    [&](auto *ptr) -> std::vector<HitReg<Tags...>> {
 		    if (!ptr)
 			    throw std::runtime_error("Unknown backend");
 		    return ptr->template nearest_hits<Tags...>(rays);
@@ -86,7 +83,8 @@ inline std::vector<HitRegA<Tags...>> nearest_hits(const std::vector<Ray> &rays) 
 	    var_selected);
 }
 
-inline std::vector<HitReg2<true, true, true>> nearest_hits(const std::vector<Ray> &rays) {
+inline std::vector<HitReg<filter::uv, filter::t, filter::primitive_id>>
+nearest_hits(const std::vector<Ray> &rays) {
 	return nearest_hits<filter::uv, filter::t, filter::primitive_id>(rays);
 }
 
