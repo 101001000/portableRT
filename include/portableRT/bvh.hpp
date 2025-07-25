@@ -263,6 +263,18 @@ class BVH2 {
 		if constexpr (has_tag<filter::t, Tags...>) {
 			hit_reg.t = t_near;
 		}
+		if constexpr (has_tag<filter::valid, Tags...>) {
+			if (t_near < std::numeric_limits<float>::infinity()) {
+				hit_reg.valid = true;
+			} else {
+				hit_reg.valid = false;
+			}
+		}
+		if constexpr (has_tag<filter::p, Tags...>) {
+			hit_reg.p = {ray.origin[0] + t_near * ray.direction[0],
+			             ray.origin[1] + t_near * ray.direction[1],
+			             ray.origin[2] + t_near * ray.direction[2]};
+		}
 		return hit_reg;
 	}
 

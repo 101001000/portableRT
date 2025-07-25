@@ -19,13 +19,8 @@ int main() {
 		portableRT::select_backend(backend);
 		backend->set_tris({vertices});
 		auto hits1 = portableRT::nearest_hits({hit_ray});
-		auto hits2 = portableRT::nearest_hits<portableRT::filter::uv, portableRT::filter::t,
-		                                      portableRT::filter::primitive_id>({miss_ray});
-		std::cout << "Ray 1: "
-		          << (hits1[0].t == std::numeric_limits<float>::infinity() ? "miss" : "hit") << " "
-		          << hits1[0].u << " " << hits1[0].v << " " << hits1[0].primitive_id << "\nRay 2: "
-		          << (hits2[0].t == std::numeric_limits<float>::infinity() ? "miss" : "hit")
-		          << std::endl;
+		auto hits2 = portableRT::nearest_hits({miss_ray});
+		std::cout << "Ray 1: " << hits1[0].valid << "\nRay 2: " << hits2[0].valid << std::endl;
 	}
 
 	return 0;

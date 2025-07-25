@@ -83,9 +83,10 @@ inline std::vector<HitReg<Tags...>> nearest_hits(const std::vector<Ray> &rays) {
 	    var_selected);
 }
 
-inline std::vector<HitReg<filter::uv, filter::t, filter::primitive_id>>
-nearest_hits(const std::vector<Ray> &rays) {
-	return nearest_hits<filter::uv, filter::t, filter::primitive_id>(rays);
+// This can be simplified with a tag list
+inline std::vector<FullTags> nearest_hits(const std::vector<Ray> &rays) {
+	return nearest_hits<filter::uv, filter::t, filter::primitive_id, filter::p, filter::valid>(
+	    rays);
 }
 
 BackendVar to_variant(Backend *backend);
