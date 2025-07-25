@@ -113,6 +113,20 @@ By calling `nearest_hits(std::vector<Ray>)` and providing an array of rays, the 
 std::vector<float> hits = portableRT::nearest_hits({rays});
 ```
 
+### Intersection filtering
+
+If you're doing depth visualization for example and only care about the "t" component of the intersection, or you just need the primitive ID of the intersected triangle, you're covered. Use filter tags to save bandwidth and skip computing the other components!
+
+Filter the intersection results by passing any combination of tags to `nearest_hits`. Available tags:
+
+- `filter::t`: distance to the intersection  
+- `filter::uv`: barycentric coordinates  
+- `filter::primitive_id`: index of the intersected triangle  
+
+```cpp
+auto hits = portableRT::nearest_hits<filter::t, filter::primitive_id, filter::uv>(rays);
+```
+
 ### Example
 
 ```cpp
@@ -136,8 +150,8 @@ int main() {
     std::cout << "Testing " << backend->name() << std::endl;
     portableRT::select_backend(backend);
     backend->set_tris({vertices});
-    std::vector<HitReg> hits1 = portableRT::nearest_hits({hit_ray});
-    std::vector<HitReg> hits2 = portableRT::nearest_hits({miss_ray});
+    auto hits1 = portableRT::nearest_hits({hit_ray});
+    auto hits2 = portableRT::nearest_hits({miss_ray});
     std::cout << "Ray 1: "
               << (hits1[0].t == std::numeric_limits<float>::infinity() ? "miss"
                                                                      : "hit")
