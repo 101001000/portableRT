@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <string>
+#include <variant>
 #include <vector>
 
 #include "core.hpp"
@@ -12,14 +13,9 @@ using NearestHitsDispatchFn = std::vector<HitReg> (*)(void *, const std::vector<
 
 class Backend {
   public:
-	Backend(std::string name, void *self_ptr, NearestHitsDispatchFn fn)
-	    : name_{std::move(name)}, self_{self_ptr}, nearest_hits_{fn} {}
+	Backend(std::string name, void *self_ptr) : name_{std::move(name)}, self_{self_ptr} {}
 
 	const std::string &name() const { return name_; }
-
-	std::vector<HitReg> nearest_hits(const std::vector<Ray> &rays) {
-		return nearest_hits_(self_, rays);
-	}
 
 	// TODO make move version
 	virtual void set_tris(const Tris &tris) = 0;
@@ -28,7 +24,6 @@ class Backend {
 	virtual void shutdown() = 0;
 	virtual std::string device_name() const = 0;
 
-	NearestHitsDispatchFn nearest_hits_;
 	void *self_;
 
   private:
@@ -37,16 +32,10 @@ class Backend {
 
 template <class Derived> class InvokableBackend : public Backend {
   public:
-	InvokableBackend(std::string name)
-	    : Backend{std::move(name), static_cast<void *>(this), &dispatch} {}
+	InvokableBackend(std::string name) : Backend{std::move(name), static_cast<void *>(this)} {}
 
   protected:
 	~InvokableBackend() = default;
-
-  private:
-	static std::vector<HitReg> dispatch(void *self, const std::vector<Ray> &rays) {
-		return static_cast<Derived *>(self)->nearest_hits(rays);
-	}
 };
 
 inline Backend *selected_backend = nullptr;
@@ -58,19 +47,52 @@ inline const std::vector<Backend *> &all_backends() { return all_backends_; }
 inline std::vector<Backend *> available_backends_;
 inline const std::vector<Backend *> &available_backends() { return available_backends_; }
 
-inline NearestHitsDispatchFn nearest_hits_call = nullptr;
+class OptiXBackend;
+class HIPBackend;
+class EmbreeSYCLBackend;
+class EmbreeCPUBackend;
+class SYCLBackend;
+class CPUBackend;
 
-inline std::vector<HitReg> nearest_hits(const std::vector<Ray> &rays) {
-	return nearest_hits_call(selected_backend->self_, rays);
+using BackendVar = std::variant<
+#if defined(USE_OPTIX)
+    OptiXBackend *,
+#endif
+#if defined(USE_HIP)
+    HIPBackend *,
+#endif
+#if defined(USE_EMBREE_SYCL)
+    EmbreeSYCLBackend *,
+#endif
+#if defined(USE_EMBREE_CPU)
+    EmbreeCPUBackend *,
+#endif
+#if defined(USE_SYCL)
+    SYCLBackend *,
+#endif
+    CPUBackend *>;
+
+inline BackendVar var_selected{static_cast<CPUBackend *>(nullptr)};
+
+template <class... Tags>
+inline std::vector<HitRegA<Tags...>> nearest_hits(const std::vector<Ray> &rays) {
+	using Reg = HitRegA<Tags...>;
+	return std::visit(
+	    [&](auto *ptr) -> std::vector<Reg> {
+		    if (!ptr)
+			    throw std::runtime_error("Unknown backend");
+		    return ptr->template nearest_hits<Tags...>(rays);
+	    },
+	    var_selected);
 }
 
-inline void select_backend(Backend *backend) {
-	if (selected_backend)
-		selected_backend->shutdown();
-	selected_backend = backend;
-	backend->init();
-	nearest_hits_call = backend->nearest_hits_;
+inline std::vector<HitReg2<true, true, true>> nearest_hits(const std::vector<Ray> &rays) {
+	return nearest_hits<filter::uv, filter::t, filter::primitive_id>(rays);
 }
+
+BackendVar to_variant(Backend *backend);
+
+void select_backend(Backend *backend);
 
 struct RegisterBackend {
 	RegisterBackend(Backend &b) {

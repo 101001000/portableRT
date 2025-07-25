@@ -18,13 +18,14 @@ int main() {
 		std::cout << "Testing " << backend->name() << std::endl;
 		portableRT::select_backend(backend);
 		backend->set_tris({vertices});
-		std::vector<portableRT::HitReg> hits1 = portableRT::nearest_hits({hit_ray});
-		std::vector<portableRT::HitReg> hits2 = portableRT::nearest_hits({miss_ray});
+		auto hits1 = portableRT::nearest_hits({hit_ray});
+		auto hits2 = portableRT::nearest_hits<portableRT::filter::uv, portableRT::filter::t,
+		                                      portableRT::filter::primitive_id>({miss_ray});
 		std::cout << "Ray 1: "
 		          << (hits1[0].t == std::numeric_limits<float>::infinity() ? "miss" : "hit") << " "
 		          << hits1[0].u << " " << hits1[0].v << " " << hits1[0].primitive_id << "\nRay 2: "
-		          << (hits2[0].t == std::numeric_limits<float>::infinity() ? "miss" : "hit") << " "
-		          << hits2[0].u << " " << hits2[0].v << " " << hits2[0].primitive_id << std::endl;
+		          << (hits2[0].t == std::numeric_limits<float>::infinity() ? "miss" : "hit")
+		          << std::endl;
 	}
 
 	return 0;

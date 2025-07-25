@@ -27,6 +27,33 @@ struct HitReg {
 	uint32_t primitive_id;
 };
 
+struct Empty {};
+
+template <bool HasUV, bool HasT, bool HasPrimitiveId> struct HitReg2 {
+	using has_uv = std::bool_constant<HasUV>;
+	using has_t = std::bool_constant<HasT>;
+	using has_primitive_id = std::bool_constant<HasPrimitiveId>;
+
+	std::conditional_t<HasUV, float, Empty> u;
+	std::conditional_t<HasUV, float, Empty> v;
+	std::conditional_t<HasT, float, Empty> t;
+	std::conditional_t<HasPrimitiveId, uint32_t, Empty> primitive_id;
+};
+
+template <typename T, typename... List> constexpr bool has_tag = (std::is_same_v<T, List> || ...);
+
+namespace filter {
+struct uv {};
+struct t {};
+struct primitive_id {};
+} // namespace filter
+
+template <class... Tags>
+using HitRegA = HitReg2<has_tag<filter::uv, Tags...>, has_tag<filter::t, Tags...>,
+                        has_tag<filter::primitive_id, Tags...>>;
+
+using FullTags = HitRegA<filter::uv, filter::t, filter::primitive_id>;
+
 using Tri = std::array<float, 9>;
 using Tris = std::vector<Tri>;
 

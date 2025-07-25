@@ -14,7 +14,7 @@ option(USE_EMBREE_CPU "Enable Embree CPU backend" OFF)
 option(USE_SYCL "Enable SYCL backend" OFF)
 
 # All the files that don't require an specific compiler
-add_library(portableRT src/portableRT.cpp src/intersect_cpu.cpp)
+add_library(portableRT src/portableRT.cpp src/intersect_cpu.cpp src/backend.cpp)
 
 target_include_directories(portableRT PUBLIC ${CMAKE_BINARY_DIR}/include)
 
