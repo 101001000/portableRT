@@ -122,10 +122,15 @@ Filter the intersection results by passing any combination of tags to `nearest_h
 - `filter::t`: distance to the intersection  
 - `filter::uv`: barycentric coordinates  
 - `filter::primitive_id`: index of the intersected triangle  
+- `filter::p`: intersection point  
+- `filter::valid`: whether the intersection is valid  
 
 ```cpp
-auto hits = portableRT::nearest_hits<filter::t, filter::primitive_id, filter::uv>(rays);
+auto hits = portableRT::nearest_hits<filter::t, filter::primitive_id, filter::uv, filter::p, filter::valid>(rays);
 ```
+
+Filtering is currently unavailable for the moment in the HIP, SYCL and Embree SYCL backends.
+
 
 ### Example
 
@@ -153,11 +158,9 @@ int main() {
     auto hits1 = portableRT::nearest_hits({hit_ray});
     auto hits2 = portableRT::nearest_hits({miss_ray});
     std::cout << "Ray 1: "
-              << (hits1[0].t == std::numeric_limits<float>::infinity() ? "miss"
-                                                                     : "hit")
+              << (hits1[0].valid ? "hit" : "miss")
               << "\nRay 2: "
-              << (hits2[0].t == std::numeric_limits<float>::infinity() ? "miss"
-                                                                     : "hit")
+              << (hits2[0].valid ? "hit" : "miss")
               << std::endl;
   }
 
