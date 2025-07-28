@@ -2,12 +2,12 @@
 #include <cstdio>
 #include <cstdint>
 
-struct HitReg{
-    float t;
+struct alignas(16) HitReg{
     float u;
     float v;
+    float t;
     uint32_t primitive_id;
-    bool valid;
+    alignas(4) bool valid;
     float3 p;
 };
 
