@@ -7,6 +7,8 @@ struct HitReg{
     float u;
     float v;
     uint32_t primitive_id;
+    bool valid;
+    float3 p;
 };
 
 struct Params        
@@ -46,7 +48,8 @@ extern "C" __global__ void __raygen__rg()
     params.results[i].u = __uint_as_float(p1);
     params.results[i].v = __uint_as_float(p2);
     params.results[i].primitive_id = p3;
-
+    params.results[i].valid = isfinite(__uint_as_float(p0));
+    params.results[i].p = make_float3(o4.x + __uint_as_float(p0) * d4.x, o4.y + __uint_as_float(p0) * d4.y, o4.z + __uint_as_float(p0) * d4.z);
 }
 
 extern "C" __global__ void __miss__ms()        {
