@@ -74,7 +74,7 @@ inline BackendVar var_selected{static_cast<CPUBackend *>(nullptr)};
 
 template <class... Tags> std::vector<HitReg<Tags...>> nearest_hits(const std::vector<Ray> &rays);
 
-inline std::vector<FullTags> nearest_hits(const std::vector<Ray> &rays) {
+inline std::vector<FullHitReg> nearest_hits(const std::vector<Ray> &rays) {
 	return nearest_hits<ALL_TAGS>(rays);
 }
 

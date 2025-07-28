@@ -54,9 +54,9 @@ using HitReg = HitRegImpl<has_tag<filter::uv, Tags...>, has_tag<filter::t, Tags.
                           has_tag<filter::primitive_id, Tags...>, has_tag<filter::p, Tags...>,
                           has_tag<filter::valid, Tags...>>;
 
-using FullTags = HitReg<filter::uv, filter::t, filter::primitive_id, filter::p, filter::valid>;
+using FullHitReg = HitReg<filter::uv, filter::t, filter::primitive_id, filter::p, filter::valid>;
 
-template <class... Tags> HitReg<Tags...> slice(const FullTags &hit) {
+template <class... Tags> HitReg<Tags...> slice(const FullHitReg &hit) {
 	HitReg<Tags...> res;
 	if constexpr (has_tag<filter::uv, Tags...>) {
 		res.u = hit.u;

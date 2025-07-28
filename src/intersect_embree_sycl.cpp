@@ -67,7 +67,7 @@ RTCDevice initializeDevice(sycl::context &sycl_context, sycl::device &sycl_devic
 }
 
 void castRay(sycl::queue &queue, const RTCTraversable traversable,
-             const std::vector<portableRT::Ray> &rays, portableRT::FullTags *results) {
+             const std::vector<portableRT::Ray> &rays, portableRT::FullHitReg *results) {
 
 	portableRT::Ray *d_rays = sycl::malloc_device<portableRT::Ray>(rays.size(), queue);
 	queue.memcpy(d_rays, rays.data(), sizeof(portableRT::Ray) * rays.size());
@@ -178,11 +178,11 @@ void EmbreeSYCLBackend::set_tris(const Tris &tris) {
 template <class... Tags>
 std::vector<HitReg<Tags...>> EmbreeSYCLBackend::nearest_hits(const std::vector<Ray> &rays) {
 	try {
-		FullTags *result = sycl::malloc_shared<FullTags>(rays.size(), m_impl->m_q);
+		FullHitReg *result = sycl::malloc_shared<FullHitReg>(rays.size(), m_impl->m_q);
 		castRay(m_impl->m_q, m_rtctraversable, rays, result);
 		std::vector<HitReg<Tags...>> hits(rays.size());
 		std::transform(result, result + rays.size(), hits.begin(),
-		               [](const FullTags &h) { return slice<Tags...>(h); });
+		               [](const FullHitReg &h) { return slice<Tags...>(h); });
 		sycl::free(result, m_impl->m_q);
 		return hits;
 	} catch (sycl::_V1::exception &e) {

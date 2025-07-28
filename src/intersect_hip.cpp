@@ -141,7 +141,7 @@ __device__ float2 barycentrics(float3 v0, float3 v1, float3 v2, float3 p) {
 	return {v, w};
 }
 
-__global__ void nearest_hit(void *bvh, portableRT::FullTags *out, portableRT::Ray *rays,
+__global__ void nearest_hit(void *bvh, portableRT::FullHitReg *out, portableRT::Ray *rays,
                             uint64_t size, uint64_t pos, uint64_t num_rays) {
 
 	int idx = threadIdx.x + blockIdx.x * blockDim.x;
@@ -172,6 +172,7 @@ __global__ void nearest_hit(void *bvh, portableRT::FullTags *out, portableRT::Ra
 	float t_near = std::numeric_limits<float>::infinity();
 	uint32_t id = InvalidValue;
 	float u, v;
+	float3 p;
 
 	while (stack_ptr >= 0) {
 
@@ -205,7 +206,7 @@ __global__ void nearest_hit(void *bvh, portableRT::FullTags *out, portableRT::Ra
 				float3 v0 = node->m_triPair.m_v0;
 				float3 v1 = node->m_triPair.m_v1;
 				float3 v2 = node->m_triPair.m_v2;
-				float3 p = {ray_o.x + ray_d.x * t, ray_o.y + ray_d.y * t, ray_o.z + ray_d.z * t};
+				p = {ray_o.x + ray_d.x * t, ray_o.y + ray_d.y * t, ray_o.z + ray_d.z * t};
 				float2 bary = barycentrics(v0, v1, v2, p);
 				u = bary.x;
 				v = bary.y;
@@ -213,7 +214,7 @@ __global__ void nearest_hit(void *bvh, portableRT::FullTags *out, portableRT::Ra
 		}
 	}
 
-	out[idx] = {t_near, u, v, id};
+	out[idx] = {u, v, t_near, id, t_near < std::numeric_limits<float>::infinity(), {p.x, p.y, p.z}};
 }
 
 namespace portableRT {
@@ -301,9 +302,9 @@ void HIPBackend::set_tris(const Tris &tris) {
 template <class... Tags>
 std::vector<HitReg<Tags...>> HIPBackend::nearest_hits(const std::vector<Ray> &rays) {
 
-	FullTags *dHit;
+	FullHitReg *dHit;
 	Ray *dRays;
-	CHK(hipMalloc(&dHit, sizeof(FullTags) * rays.size()));
+	CHK(hipMalloc(&dHit, sizeof(FullHitReg) * rays.size()));
 	CHK(hipMalloc(&dRays, sizeof(Ray) * rays.size()));
 	CHK(hipMemcpy(dRays, rays.data(), sizeof(Ray) * rays.size(), hipMemcpyHostToDevice));
 
@@ -312,22 +313,22 @@ std::vector<HitReg<Tags...>> HIPBackend::nearest_hits(const std::vector<Ray> &ra
 
 	nearest_hit<<<blocks, block_size>>>(m_dbvh, dHit, dRays, 1000000000, 5, rays.size());
 	CHK(hipDeviceSynchronize());
-	FullTags *hHit = new FullTags[rays.size()];
-	CHK(hipMemcpy(hHit, dHit, sizeof(FullTags) * rays.size(), hipMemcpyDeviceToHost));
+	FullHitReg *hHit = new FullHitReg[rays.size()];
+	CHK(hipMemcpy(hHit, dHit, sizeof(FullHitReg) * rays.size(), hipMemcpyDeviceToHost));
 	CHK(hipFree(dHit));
 	CHK(hipFree(dRays));
 
 	std::vector<HitReg<Tags...>> hits;
 	hits.reserve(rays.size());
 	std::transform(hHit, hHit + rays.size(), std::back_inserter(hits),
-	               [](const FullTags &h) { return slice<Tags...>(h); });
+	               [](const FullHitReg &h) { return slice<Tags...>(h); });
 	delete[] hHit;
 
 	return hits;
 }
 
 // Manual instantiation
-template std::vector<FullTags>
+template std::vector<FullHitReg>
 portableRT::HIPBackend::nearest_hits<ALL_TAGS>(const std::vector<portableRT::Ray> &);
 
 void HIPBackend::init() {}

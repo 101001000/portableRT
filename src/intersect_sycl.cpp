@@ -40,7 +40,7 @@ void SYCLBackend::shutdown() { m_impl.reset(); }
 template <class... Tags>
 std::vector<HitReg<Tags...>> SYCLBackend::nearest_hits(const std::vector<Ray> &rays) {
 	try {
-		FullTags *res = sycl::malloc_shared<FullTags>(rays.size(), m_impl->m_q);
+		FullHitReg *res = sycl::malloc_shared<FullHitReg>(rays.size(), m_impl->m_q);
 		Ray *rays_dev = sycl::malloc_device<Ray>(rays.size(), m_impl->m_q);
 		m_impl->m_q.memcpy(rays_dev, rays.data(), sizeof(Ray) * rays.size()).wait();
 
@@ -49,7 +49,7 @@ std::vector<HitReg<Tags...>> SYCLBackend::nearest_hits(const std::vector<Ray> &r
 		m_impl->m_q
 		    .submit([&](sycl::handler &cgh) {
 			    cgh.parallel_for(sycl::range<1>(rays.size()), [=](sycl::id<1> id) {
-				    FullTags hit_reg = bvh->nearest_tri<ALL_TAGS>(rays_dev[id]);
+				    FullHitReg hit_reg = bvh->nearest_tri<ALL_TAGS>(rays_dev[id]);
 				    res[id] = hit_reg;
 			    });
 		    })
@@ -57,7 +57,7 @@ std::vector<HitReg<Tags...>> SYCLBackend::nearest_hits(const std::vector<Ray> &r
 
 		std::vector<HitReg<Tags...>> hits(rays.size());
 		std::transform(res, res + rays.size(), hits.begin(),
-		               [](const FullTags &h) { return slice<Tags...>(h); });
+		               [](const FullHitReg &h) { return slice<Tags...>(h); });
 		sycl::free(res, m_impl->m_q);
 		sycl::free(rays_dev, m_impl->m_q);
 		return hits;
@@ -70,7 +70,7 @@ std::vector<HitReg<Tags...>> SYCLBackend::nearest_hits(const std::vector<Ray> &r
 }
 
 // Manual instantiation
-template std::vector<FullTags>
+template std::vector<FullHitReg>
 portableRT::SYCLBackend::nearest_hits<ALL_TAGS>(const std::vector<portableRT::Ray> &);
 
 bool SYCLBackend::is_available() const {
