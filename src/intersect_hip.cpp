@@ -141,7 +141,7 @@ __device__ float2 barycentrics(float3 v0, float3 v1, float3 v2, float3 p) {
 	return {v, w};
 }
 
-__global__ void nearest_hit(void *bvh, portableRT::HitReg *out, portableRT::Ray *rays,
+__global__ void nearest_hit(void *bvh, portableRT::FullTags *out, portableRT::Ray *rays,
                             uint64_t size, uint64_t pos, uint64_t num_rays) {
 
 	int idx = threadIdx.x + blockIdx.x * blockDim.x;
@@ -298,11 +298,12 @@ void HIPBackend::set_tris(const Tris &tris) {
 	m_dbvh = parse_bvh(&bvh);
 }
 
-std::vector<HitReg> HIPBackend::nearest_hits(const std::vector<Ray> &rays) {
+template <class... Tags>
+std::vector<HitReg<Tags...>> HIPBackend::nearest_hits(const std::vector<Ray> &rays) {
 
-	HitReg *dHit;
+	FullTags *dHit;
 	Ray *dRays;
-	CHK(hipMalloc(&dHit, sizeof(HitReg) * rays.size()));
+	CHK(hipMalloc(&dHit, sizeof(FullTags) * rays.size()));
 	CHK(hipMalloc(&dRays, sizeof(Ray) * rays.size()));
 	CHK(hipMemcpy(dRays, rays.data(), sizeof(Ray) * rays.size(), hipMemcpyHostToDevice));
 
@@ -311,13 +312,24 @@ std::vector<HitReg> HIPBackend::nearest_hits(const std::vector<Ray> &rays) {
 
 	nearest_hit<<<blocks, block_size>>>(m_dbvh, dHit, dRays, 1000000000, 5, rays.size());
 	CHK(hipDeviceSynchronize());
-	HitReg *hHit = new HitReg[rays.size()];
-	CHK(hipMemcpy(hHit, dHit, sizeof(HitReg) * rays.size(), hipMemcpyDeviceToHost));
+	FullTags *hHit = new FullTags[rays.size()];
+	CHK(hipMemcpy(hHit, dHit, sizeof(FullTags) * rays.size(), hipMemcpyDeviceToHost));
 	CHK(hipFree(dHit));
 	CHK(hipFree(dRays));
 
-	return std::vector<HitReg>(hHit, hHit + rays.size());
+	std::vector<HitReg<Tags...>> hits;
+	hits.reserve(rays.size());
+	std::transform(hHit, hHit + rays.size(), std::back_inserter(hits),
+	               [](const FullTags &h) { return slice<Tags...>(h); });
+	delete[] hHit;
+
+	return hits;
 }
+
+// Manual instantiation
+template std::vector<FullTags> portableRT::HIPBackend::nearest_hits<
+    portableRT::filter::uv, portableRT::filter::t, portableRT::filter::primitive_id,
+    portableRT::filter::p, portableRT::filter::valid>(const std::vector<portableRT::Ray> &);
 
 void HIPBackend::init() {}
 
