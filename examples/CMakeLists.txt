@@ -49,20 +49,20 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(sponza_scene)
 
 add_example(triangle)
-#add_example(backends)
-#add_example(bunny)
-#add_example(validation)
-#add_example(sponza)
+add_example(backends)
+add_example(bunny)
+add_example(validation)
+add_example(sponza)
 
 
-#add_custom_command(TARGET sponza PRE_BUILD
-#  COMMAND ${CMAKE_COMMAND} -E copy_directory
-#          ${sponza_scene_SOURCE_DIR}/2.0/Sponza/glTF
-#          $<TARGET_FILE_DIR:sponza>/assets/Sponza)
+add_custom_command(TARGET sponza PRE_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_directory
+          ${sponza_scene_SOURCE_DIR}/2.0/Sponza/glTF
+          $<TARGET_FILE_DIR:sponza>/assets/Sponza)
 
-#target_link_libraries(sponza PRIVATE SDL2::SDL2 cgltf)
-#target_link_libraries(bunny PRIVATE stb_image tinyobj)
-#target_link_libraries(validation PRIVATE stb_image tinyobj)
+target_link_libraries(sponza PRIVATE SDL2::SDL2 cgltf)
+target_link_libraries(bunny PRIVATE stb_image tinyobj)
+target_link_libraries(validation PRIVATE stb_image tinyobj)
 
 add_custom_target(copy_common ALL
   COMMAND ${CMAKE_COMMAND} -E copy_directory

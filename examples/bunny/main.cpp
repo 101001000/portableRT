@@ -124,7 +124,7 @@ int main() {
 	}
 
 	auto start = std::chrono::high_resolution_clock::now();
-	std::vector<portableRT::HitReg> hits = portableRT::nearest_hits(rays);
+	auto hits = portableRT::nearest_hits(rays);
 	auto end = std::chrono::high_resolution_clock::now();
 
 	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);

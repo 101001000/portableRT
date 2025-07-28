@@ -127,7 +127,7 @@ int main() {
 		    std::chrono::duration_cast<std::chrono::microseconds>(bvh_end - bvh_start);
 
 		auto traverse_start = std::chrono::high_resolution_clock::now();
-		std::vector<portableRT::HitReg> hits = portableRT::nearest_hits(rays);
+		auto hits = portableRT::nearest_hits(rays);
 		auto traverse_end = std::chrono::high_resolution_clock::now();
 		auto traverse_duration =
 		    std::chrono::duration_cast<std::chrono::microseconds>(traverse_end - traverse_start);

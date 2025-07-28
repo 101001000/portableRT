@@ -222,7 +222,7 @@ int main(int argc, char **argv) {
 		}
 
 		auto rt_start = std::chrono::high_resolution_clock::now();
-		std::vector<portableRT::HitReg> hits = portableRT::nearest_hits(rays);
+		auto hits = portableRT::nearest_hits(rays);
 		auto rt_end = std::chrono::high_resolution_clock::now();
 
 		for (size_t i = 0; i < hits.size(); i++) {
