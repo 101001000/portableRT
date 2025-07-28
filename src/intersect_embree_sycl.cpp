@@ -67,7 +67,7 @@ RTCDevice initializeDevice(sycl::context &sycl_context, sycl::device &sycl_devic
 }
 
 void castRay(sycl::queue &queue, const RTCTraversable traversable,
-             const std::vector<portableRT::Ray> &rays, portableRT::HitReg *results) {
+             const std::vector<portableRT::Ray> &rays, portableRT::FullTags *results) {
 
 	portableRT::Ray *d_rays = sycl::malloc_device<portableRT::Ray>(rays.size(), queue);
 	queue.memcpy(d_rays, rays.data(), sizeof(portableRT::Ray) * rays.size());
@@ -120,6 +120,10 @@ void castRay(sycl::queue &queue, const RTCTraversable traversable,
 			    results[item].primitive_id = rayhit.hit.primID;
 			    results[item].u = rayhit.hit.u;
 			    results[item].v = rayhit.hit.v;
+			    results[item].valid = rayhit.hit.geomID != RTC_INVALID_GEOMETRY_ID;
+			    results[item].p = {rayhit.ray.org_x + rayhit.ray.tfar * rayhit.ray.dir_x,
+			                       rayhit.ray.org_y + rayhit.ray.tfar * rayhit.ray.dir_y,
+			                       rayhit.ray.org_z + rayhit.ray.tfar * rayhit.ray.dir_z};
 		    });
 	});
 	queue.wait_and_throw();
@@ -171,19 +175,27 @@ void EmbreeSYCLBackend::set_tris(const Tris &tris) {
 	m_rtctraversable = rtcGetSceneTraversable(m_rtcscene);
 }
 
-std::vector<HitReg> EmbreeSYCLBackend::nearest_hits(const std::vector<Ray> &rays) {
+template <class... Tags>
+std::vector<HitReg<Tags...>> EmbreeSYCLBackend::nearest_hits(const std::vector<Ray> &rays) {
 	try {
-		HitReg *result = sycl::malloc_shared<HitReg>(rays.size(), m_impl->m_q);
+		FullTags *result = sycl::malloc_shared<FullTags>(rays.size(), m_impl->m_q);
 		castRay(m_impl->m_q, m_rtctraversable, rays, result);
-		std::vector<HitReg> hits(result, result + rays.size());
+		std::vector<HitReg<Tags...>> hits(rays.size());
+		std::transform(result, result + rays.size(), hits.begin(),
+		               [](const FullTags &h) { return slice<Tags...>(h); });
 		sycl::free(result, m_impl->m_q);
 		return hits;
 	} catch (sycl::_V1::exception &e) {
 		std::cout << e.what() << std::endl;
-		return std::vector<HitReg>(
-		    rays.size(), HitReg{std::numeric_limits<float>::infinity(), static_cast<uint32_t>(-1)});
+		return std::vector<HitReg<Tags...>>(
+		    rays.size(),
+		    HitReg<Tags...>{std::numeric_limits<float>::infinity(), static_cast<uint32_t>(-1)});
 	}
 }
+
+// Manual instantiation
+template std::vector<HitReg<ALL_TAGS>>
+portableRT::EmbreeSYCLBackend::nearest_hits<ALL_TAGS>(const std::vector<portableRT::Ray> &);
 
 bool EmbreeSYCLBackend::is_available() const {
 	try {
