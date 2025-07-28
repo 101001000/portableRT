@@ -5,13 +5,96 @@
 
 namespace portableRT {
 
+template <class... Tags>
+inline portableRT::HitReg<Tags...> castRay(RTCScene scene, float ox, float oy, float oz, float dx,
+                                           float dy, float dz) {
+
+	struct RTCRayHit rayhit;
+	rayhit.ray.org_x = ox;
+	rayhit.ray.org_y = oy;
+	rayhit.ray.org_z = oz;
+	rayhit.ray.dir_x = dx;
+	rayhit.ray.dir_y = dy;
+	rayhit.ray.dir_z = dz;
+	rayhit.ray.tnear = 0;
+	rayhit.ray.tfar = std::numeric_limits<float>::infinity();
+	rayhit.ray.mask = -1;
+	rayhit.ray.flags = 0;
+	rayhit.hit.geomID = RTC_INVALID_GEOMETRY_ID;
+	rayhit.hit.primID = RTC_INVALID_GEOMETRY_ID;
+	rayhit.hit.instID[0] = RTC_INVALID_GEOMETRY_ID;
+
+	rtcIntersect1(scene, &rayhit);
+
+	portableRT::HitReg<Tags...> hit_reg;
+
+	if constexpr (has_tag<filter::p, Tags...>) {
+		hit_reg.p = {ox + dx * rayhit.ray.tfar, oy + dy * rayhit.ray.tfar,
+		             oz + dz * rayhit.ray.tfar};
+	}
+
+	if constexpr (has_tag<filter::t, Tags...>) {
+		hit_reg.t = rayhit.ray.tfar;
+	}
+
+	if constexpr (has_tag<filter::primitive_id, Tags...>) {
+		hit_reg.primitive_id = rayhit.hit.primID;
+	}
+
+	if constexpr (has_tag<filter::uv, Tags...>) {
+		hit_reg.u = rayhit.hit.u;
+		hit_reg.v = rayhit.hit.v;
+	}
+
+	if constexpr (has_tag<filter::valid, Tags...>) {
+		hit_reg.valid = rayhit.hit.primID != RTC_INVALID_GEOMETRY_ID;
+	}
+
+	return hit_reg;
+}
+
 class EmbreeCPUBackend : public InvokableBackend<EmbreeCPUBackend> {
   public:
 	EmbreeCPUBackend() : InvokableBackend("Embree CPU") { static RegisterBackend reg(*this); }
 
 	void initializeScene();
 
-	std::vector<HitReg> nearest_hits(const std::vector<Ray> &rays);
+	template <class... Tags>
+	void check_hit(int i, const std::vector<Ray> &rays, std::vector<HitReg<Tags...>> &hits, int N) {
+		for (int r = 0; r < N; r++) {
+			auto hit_reg = castRay<Tags...>(m_scene, rays[i + r].origin[0], rays[i + r].origin[1],
+			                                rays[i + r].origin[2], rays[i + r].direction[0],
+			                                rays[i + r].direction[1], rays[i + r].direction[2]);
+			hits[i + r] = hit_reg;
+		}
+	}
+
+	template <class... Tags>
+	std::vector<HitReg<Tags...>> nearest_hits(const std::vector<Ray> &rays) {
+		std::vector<HitReg<Tags...>> hits;
+		hits.resize(rays.size());
+
+		clear_affinity();
+
+		unsigned n = std::thread::hardware_concurrency();
+		std::vector<std::thread> threads;
+		threads.reserve(n);
+
+		int rays_per_thread = rays.size() / n;
+
+		for (unsigned i = 0; i < n; ++i) {
+			threads.emplace_back(&EmbreeCPUBackend::check_hit<Tags...>, this, i * rays_per_thread,
+			                     std::cref(rays), std::ref(hits), rays_per_thread);
+		}
+
+		for (auto &thread : threads)
+			thread.join();
+
+		check_hit<Tags...>(n * rays_per_thread, rays, hits, rays.size() % n);
+
+		return hits;
+	}
+
 	bool is_available() const override;
 	void init() override;
 	void shutdown() override;

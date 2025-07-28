@@ -48,9 +48,9 @@ inline const std::vector<Backend *> &available_backends() { return available_bac
 class OptiXBackend;
 class HIPBackend;
 class EmbreeSYCLBackend;
-class EmbreeCPUBackend;
 class SYCLBackend;
 class CPUBackend;
+class EmbreeCPUBackend;
 
 using BackendVar = std::variant<
 #if defined(USE_OPTIX)
@@ -72,16 +72,7 @@ using BackendVar = std::variant<
 
 inline BackendVar var_selected{static_cast<CPUBackend *>(nullptr)};
 
-template <class... Tags>
-inline std::vector<HitReg<Tags...>> nearest_hits(const std::vector<Ray> &rays) {
-	return std::visit(
-	    [&](auto *ptr) -> std::vector<HitReg<Tags...>> {
-		    if (!ptr)
-			    throw std::runtime_error("Unknown backend");
-		    return ptr->template nearest_hits<Tags...>(rays);
-	    },
-	    var_selected);
-}
+template <class... Tags> std::vector<HitReg<Tags...>> nearest_hits(const std::vector<Ray> &rays);
 
 // This can be simplified with a tag list
 inline std::vector<FullTags> nearest_hits(const std::vector<Ray> &rays) {

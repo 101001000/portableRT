@@ -20,35 +20,6 @@ RTCDevice initializeDevice() {
 	return device;
 }
 
-portableRT::HitReg castRay(RTCScene scene, float ox, float oy, float oz, float dx, float dy,
-                           float dz) {
-
-	struct RTCRayHit rayhit;
-	rayhit.ray.org_x = ox;
-	rayhit.ray.org_y = oy;
-	rayhit.ray.org_z = oz;
-	rayhit.ray.dir_x = dx;
-	rayhit.ray.dir_y = dy;
-	rayhit.ray.dir_z = dz;
-	rayhit.ray.tnear = 0;
-	rayhit.ray.tfar = std::numeric_limits<float>::infinity();
-	rayhit.ray.mask = -1;
-	rayhit.ray.flags = 0;
-	rayhit.hit.geomID = RTC_INVALID_GEOMETRY_ID;
-	rayhit.hit.primID = RTC_INVALID_GEOMETRY_ID;
-	rayhit.hit.instID[0] = RTC_INVALID_GEOMETRY_ID;
-
-	rtcIntersect1(scene, &rayhit);
-
-	portableRT::HitReg hit_reg;
-	hit_reg.t = rayhit.ray.tfar;
-	hit_reg.primitive_id = rayhit.hit.primID;
-	hit_reg.u = rayhit.hit.u;
-	hit_reg.v = rayhit.hit.v;
-
-	return hit_reg;
-}
-
 namespace portableRT {
 
 void EmbreeCPUBackend::set_tris(const Tris &tris) {
@@ -76,42 +47,6 @@ void EmbreeCPUBackend::set_tris(const Tris &tris) {
 	rtcCommitGeometry(m_tri);
 	m_geom_id = rtcAttachGeometry(m_scene, m_tri);
 	rtcCommitScene(m_scene);
-}
-
-void check_hit(int i, RTCScene scene, const std::vector<Ray> &rays, std::vector<HitReg> &hits,
-               int N) {
-	for (int r = 0; r < N; r++) {
-		auto hit_reg =
-		    castRay(scene, rays[i + r].origin[0], rays[i + r].origin[1], rays[i + r].origin[2],
-		            rays[i + r].direction[0], rays[i + r].direction[1], rays[i + r].direction[2]);
-		hits[i + r] = hit_reg;
-	}
-}
-
-std::vector<HitReg> EmbreeCPUBackend::nearest_hits(const std::vector<Ray> &rays) {
-
-	std::vector<HitReg> hits;
-	hits.resize(rays.size());
-
-	clear_affinity();
-
-	unsigned n = std::thread::hardware_concurrency();
-	std::vector<std::thread> threads;
-	threads.reserve(n);
-
-	int rays_per_thread = rays.size() / n;
-
-	for (unsigned i = 0; i < n; ++i) {
-		threads.emplace_back(check_hit, i * rays_per_thread, m_scene, std::cref(rays),
-		                     std::ref(hits), rays_per_thread);
-	}
-
-	for (auto &thread : threads)
-		thread.join();
-
-	check_hit(n * rays_per_thread, m_scene, rays, hits, rays.size() % n);
-
-	return hits;
 }
 
 bool EmbreeCPUBackend::is_available() const {

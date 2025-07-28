@@ -21,3 +21,5 @@
 #ifdef USE_SYCL
 #include "intersect_sycl.hpp"
 #endif
+
+#include "nearest_hits_impl.hpp"
