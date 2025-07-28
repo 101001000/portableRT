@@ -22,6 +22,8 @@ struct Ray {
 
 struct Empty {};
 
+#define ALL_TAGS filter::uv, filter::t, filter::primitive_id, filter::p, filter::valid
+
 template <bool HasUV, bool HasT, bool HasPrimitiveId, bool HasP, bool HasValid> struct HitRegImpl {
 	using has_uv = std::bool_constant<HasUV>;
 	using has_t = std::bool_constant<HasT>;

@@ -327,9 +327,8 @@ std::vector<HitReg<Tags...>> HIPBackend::nearest_hits(const std::vector<Ray> &ra
 }
 
 // Manual instantiation
-template std::vector<FullTags> portableRT::HIPBackend::nearest_hits<
-    portableRT::filter::uv, portableRT::filter::t, portableRT::filter::primitive_id,
-    portableRT::filter::p, portableRT::filter::valid>(const std::vector<portableRT::Ray> &);
+template std::vector<FullTags>
+portableRT::HIPBackend::nearest_hits<ALL_TAGS>(const std::vector<portableRT::Ray> &);
 
 void HIPBackend::init() {}
 
