@@ -68,8 +68,7 @@ class OptiXBackend : public InvokableBackend<OptiXBackend> {
 		hits.reserve(rays.size());
 
 		CUdeviceptr d_res;
-		CUDA_CHECK(
-		    cudaMalloc(reinterpret_cast<void **>(&d_res), sizeof(HitReg<Tags...>) * rays.size()));
+		CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_res), sizeof(FullTags) * rays.size()));
 		CUdeviceptr d_origins;
 		CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_origins), sizeof(float4) * rays.size()));
 		CUdeviceptr d_directions;
@@ -93,7 +92,7 @@ class OptiXBackend : public InvokableBackend<OptiXBackend> {
 		params.handle = m_gas_handle;
 		params.origins = reinterpret_cast<float4 *>(d_origins);
 		params.directions = reinterpret_cast<float4 *>(d_directions);
-		params.results = reinterpret_cast<HitReg<Tags...> *>(d_res);
+		params.results = reinterpret_cast<FullTags *>(d_res);
 
 		CUdeviceptr d_params;
 		CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_params), sizeof(params)));
@@ -104,11 +103,13 @@ class OptiXBackend : public InvokableBackend<OptiXBackend> {
 
 		CUDA_CHECK(cudaStreamSynchronize(m_stream));
 
-		HitReg<Tags...> *h_res = new HitReg<Tags...>[rays.size()];
-		CUDA_CHECK(cudaMemcpy(h_res, (void *)d_res, sizeof(HitReg<Tags...>) * rays.size(),
+		FullTags *h_res = new FullTags[rays.size()];
+		CUDA_CHECK(cudaMemcpy(h_res, (void *)d_res, sizeof(FullTags) * rays.size(),
 		                      cudaMemcpyDeviceToHost));
 
-		hits.insert(hits.end(), h_res, h_res + rays.size());
+		std::transform(h_res, h_res + rays.size(), std::back_inserter(hits),
+		               [](const FullTags &h) { return slice<Tags...>(h); });
+
 		delete[] h_res;
 
 		CUDA_CHECK(cudaFree(reinterpret_cast<void *>(d_params)));

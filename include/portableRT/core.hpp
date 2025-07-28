@@ -54,6 +54,27 @@ using HitReg = HitRegImpl<has_tag<filter::uv, Tags...>, has_tag<filter::t, Tags.
 
 using FullTags = HitReg<filter::uv, filter::t, filter::primitive_id, filter::p, filter::valid>;
 
+template <class... Tags> HitReg<Tags...> slice(const FullTags &hit) {
+	HitReg<Tags...> res;
+	if constexpr (has_tag<filter::uv, Tags...>) {
+		res.u = hit.u;
+		res.v = hit.v;
+	}
+	if constexpr (has_tag<filter::t, Tags...>) {
+		res.t = hit.t;
+	}
+	if constexpr (has_tag<filter::primitive_id, Tags...>) {
+		res.primitive_id = hit.primitive_id;
+	}
+	if constexpr (has_tag<filter::p, Tags...>) {
+		res.p = hit.p;
+	}
+	if constexpr (has_tag<filter::valid, Tags...>) {
+		res.valid = hit.valid;
+	}
+	return res;
+}
+
 using Tri = std::array<float, 9>;
 using Tris = std::vector<Tri>;
 
