@@ -16,11 +16,11 @@
 #include <sstream>
 #include <stdexcept>
 
-struct __align__(16) Params {
+template <class... Tags> struct __align__(16) Params {
 	OptixTraversableHandle handle;
 	float4 *origins;
 	float4 *directions;
-	portableRT::FullHitReg *results;
+	portableRT::HitReg<Tags...> *results;
 };
 
 static inline float3 toFloat3(const std::array<float, 3> &a) {
@@ -64,11 +64,15 @@ class OptiXBackend : public InvokableBackend<OptiXBackend> {
 	template <class... Tags>
 	std::vector<HitReg<Tags...>> nearest_hits(const std::vector<Ray> &rays) {
 
-		std::vector<HitReg<Tags...>> hits;
-		hits.reserve(rays.size());
+		std::string hitreg_name = portableRT::hitreg_name<Tags...>();
+		int hitreg_idx = std::find(m_hitreg_names.begin(), m_hitreg_names.end(), hitreg_name) -
+		                 m_hitreg_names.begin();
+
+		std::vector<HitReg<Tags...>> hits(rays.size());
 
 		CUdeviceptr d_res;
-		CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_res), sizeof(FullHitReg) * rays.size()));
+		CUDA_CHECK(
+		    cudaMalloc(reinterpret_cast<void **>(&d_res), sizeof(HitReg<Tags...>) * rays.size()));
 		CUdeviceptr d_origins;
 		CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_origins), sizeof(float4) * rays.size()));
 		CUdeviceptr d_directions;
@@ -88,29 +92,23 @@ class OptiXBackend : public InvokableBackend<OptiXBackend> {
 		CUDA_CHECK(cudaMemcpy(reinterpret_cast<void *>(d_directions), directions.data(),
 		                      sizeof(float4) * rays.size(), cudaMemcpyHostToDevice));
 
-		Params params;
+		Params<Tags...> params;
 		params.handle = m_gas_handle;
 		params.origins = reinterpret_cast<float4 *>(d_origins);
 		params.directions = reinterpret_cast<float4 *>(d_directions);
-		params.results = reinterpret_cast<FullHitReg *>(d_res);
+		params.results = reinterpret_cast<HitReg<Tags...> *>(d_res);
 
 		CUdeviceptr d_params;
 		CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&d_params), sizeof(params)));
 		CUDA_CHECK(cudaMemcpy(reinterpret_cast<void *>(d_params), &params, sizeof(params),
 		                      cudaMemcpyHostToDevice));
-		OPTIX_CHECK(
-		    optixLaunch(m_pipeline, m_stream, d_params, sizeof(params), &m_sbt, rays.size(), 1, 1));
+		OPTIX_CHECK(optixLaunch(m_pipelines[hitreg_idx], m_stream, d_params, sizeof(params),
+		                        &m_sbts[hitreg_idx], rays.size(), 1, 1));
 
 		CUDA_CHECK(cudaStreamSynchronize(m_stream));
 
-		FullHitReg *h_res = new FullHitReg[rays.size()];
-		CUDA_CHECK(cudaMemcpy(h_res, (void *)d_res, sizeof(FullHitReg) * rays.size(),
+		CUDA_CHECK(cudaMemcpy(hits.data(), (void *)d_res, sizeof(HitReg<Tags...>) * rays.size(),
 		                      cudaMemcpyDeviceToHost));
-
-		std::transform(h_res, h_res + rays.size(), std::back_inserter(hits),
-		               [](const FullHitReg &h) { return slice<Tags...>(h); });
-
-		delete[] h_res;
 
 		CUDA_CHECK(cudaFree(reinterpret_cast<void *>(d_params)));
 		CUDA_CHECK(cudaFree(reinterpret_cast<void *>(d_res)));
@@ -123,14 +121,15 @@ class OptiXBackend : public InvokableBackend<OptiXBackend> {
   private:
 	OptixDeviceContext m_context;
 
-	OptixModule m_module{};
+	std::vector<OptixModule> m_modules;
 	OptixModuleCompileOptions m_mco{};
-	OptixPipelineCompileOptions m_pco{};
-	OptixPipeline m_pipeline = nullptr;
-	OptixShaderBindingTable m_sbt = {};
-	OptixProgramGroup m_raygen_prog_group = nullptr;
-	OptixProgramGroup m_miss_prog_group = nullptr;
-	OptixProgramGroup m_hitgroup_prog_group = nullptr;
+	std::vector<OptixPipelineCompileOptions> m_pcos;
+	std::vector<OptixPipeline> m_pipelines;
+	std::vector<OptixShaderBindingTable> m_sbts;
+	std::vector<OptixProgramGroup> m_raygen_prog_groups;
+	std::vector<OptixProgramGroup> m_miss_prog_groups;
+	std::vector<OptixProgramGroup> m_hitgroup_prog_groups;
+	std::vector<std::string> m_hitreg_names;
 	CUstream m_stream;
 	OptixTraversableHandle m_gas_handle;
 	CUdeviceptr m_d_gas_output_buffer;

@@ -53,97 +53,129 @@ void OptiXBackend::init() {
 		OPTIX_CHECK(optixDeviceContextCreate(cuCtx, &options, &m_context));
 	}
 
-	m_pco.traversableGraphFlags = OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_SINGLE_GAS;
-	m_pco.usesMotionBlur = false;
-	m_pco.exceptionFlags = OPTIX_EXCEPTION_FLAG_DEBUG | OPTIX_EXCEPTION_FLAG_TRACE_DEPTH |
-	                       OPTIX_EXCEPTION_FLAG_STACK_OVERFLOW;
-	m_pco.numPayloadValues = 4;
-	m_pco.numAttributeValues = 3;
-	m_pco.pipelineLaunchParamsVariableName = "params"; // ← tu PTX declara .const params
-	m_pco.usesPrimitiveTypeFlags = OPTIX_PRIMITIVE_TYPE_FLAGS_TRIANGLE;
-
 	std::string PTX = loadFile("tri.ptx");
-	OPTIX_CHECK(optixModuleCreateFromPTX(m_context, &m_mco, &m_pco, PTX.c_str(), PTX.size(),
-	                                     nullptr, nullptr, &m_module));
 
-	{
-		OptixProgramGroupOptions program_group_options = {}; // Initialize to zeros
+	std::vector<std::string> tags = all_tags_combinations();
 
-		OptixProgramGroupDesc raygen_prog_group_desc = {}; //
-		raygen_prog_group_desc.kind = OPTIX_PROGRAM_GROUP_KIND_RAYGEN;
-		raygen_prog_group_desc.raygen.module = m_module;
-		raygen_prog_group_desc.raygen.entryFunctionName = "__raygen__rg";
-		OPTIX_CHECK(optixProgramGroupCreate(m_context, &raygen_prog_group_desc,
-		                                    1, // num program groups
-		                                    &program_group_options, nullptr, 0,
-		                                    &m_raygen_prog_group));
+	m_modules.reserve(tags.size());
+	m_pcos.reserve(tags.size());
+	m_pipelines.reserve(tags.size());
+	m_raygen_prog_groups.reserve(tags.size());
+	m_miss_prog_groups.reserve(tags.size());
+	m_hitgroup_prog_groups.reserve(tags.size());
+	m_hitreg_names.reserve(tags.size());
+	m_sbts.reserve(tags.size());
 
-		OptixProgramGroupDesc miss_prog_group_desc = {};
-		miss_prog_group_desc.kind = OPTIX_PROGRAM_GROUP_KIND_MISS;
-		miss_prog_group_desc.miss.module = m_module;
-		miss_prog_group_desc.miss.entryFunctionName = "__miss__ms";
-		OPTIX_CHECK(optixProgramGroupCreate(m_context, &miss_prog_group_desc,
-		                                    1, // num program groups
-		                                    &program_group_options, nullptr, 0,
-		                                    &m_miss_prog_group));
+	for (int i = 0; i < tags.size(); i++) {
 
-		OptixProgramGroupDesc hitgroup_prog_group_desc = {};
-		hitgroup_prog_group_desc.kind = OPTIX_PROGRAM_GROUP_KIND_HITGROUP;
-		hitgroup_prog_group_desc.hitgroup.moduleCH = m_module;
-		hitgroup_prog_group_desc.hitgroup.entryFunctionNameCH = "__closesthit__ch";
-		OPTIX_CHECK(optixProgramGroupCreate(m_context, &hitgroup_prog_group_desc,
-		                                    1, // num program groups
-		                                    &program_group_options, nullptr, 0,
-		                                    &m_hitgroup_prog_group));
-	}
+		m_modules.push_back(OptixModule());
+		m_pcos.push_back(OptixPipelineCompileOptions());
+		m_pipelines.push_back(OptixPipeline());
+		m_raygen_prog_groups.push_back(OptixProgramGroup());
+		m_miss_prog_groups.push_back(OptixProgramGroup());
+		m_hitgroup_prog_groups.push_back(OptixProgramGroup());
+		m_sbts.push_back(OptixShaderBindingTable());
+		m_hitreg_names.push_back(tags[i]);
 
-	//
-	// Link pipeline
-	//
+		OptixPipelineCompileOptions &pco = m_pcos.back();
+		OptixModule &mod = m_modules.back();
+		OptixPipeline &pipeline = m_pipelines.back();
+		OptixProgramGroup &raygen_prog_group = m_raygen_prog_groups.back();
+		OptixProgramGroup &miss_prog_group = m_miss_prog_groups.back();
+		OptixProgramGroup &hitgroup_prog_group = m_hitgroup_prog_groups.back();
+		OptixShaderBindingTable &sbt = m_sbts.back();
 
-	{
-		const uint32_t max_trace_depth = 1;
-		OptixProgramGroup program_groups[] = {m_raygen_prog_group, m_miss_prog_group,
-		                                      m_hitgroup_prog_group};
+		pco.traversableGraphFlags = OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_SINGLE_GAS;
+		pco.usesMotionBlur = false;
+		pco.exceptionFlags = OPTIX_EXCEPTION_FLAG_DEBUG | OPTIX_EXCEPTION_FLAG_TRACE_DEPTH |
+		                     OPTIX_EXCEPTION_FLAG_STACK_OVERFLOW;
+		pco.numPayloadValues = 4;
+		pco.numAttributeValues = 3;
+		std::string param_name = "g_params_" + tags[i];
+		pco.pipelineLaunchParamsVariableName = param_name.c_str();
+		pco.usesPrimitiveTypeFlags = OPTIX_PRIMITIVE_TYPE_FLAGS_TRIANGLE;
 
-		OptixPipelineLinkOptions pipeline_link_options = {};
-		pipeline_link_options.maxTraceDepth = max_trace_depth;
-		pipeline_link_options.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_FULL;
-		OPTIX_CHECK(optixPipelineCreate(m_context, &m_pco, &pipeline_link_options, program_groups,
-		                                sizeof(program_groups) / sizeof(program_groups[0]), nullptr,
-		                                0, &m_pipeline));
+		OPTIX_CHECK(optixModuleCreateFromPTX(m_context, &m_mco, &pco, PTX.c_str(), PTX.size(),
+		                                     nullptr, nullptr, &mod));
 
-		OptixStackSizes stack_sizes = {};
-		for (auto &prog_group : program_groups) {
-			OPTIX_CHECK(optixUtilAccumulateStackSizes(prog_group, &stack_sizes));
+		{
+			OptixProgramGroupOptions program_group_options = {}; // Initialize to zeros
+
+			OptixProgramGroupDesc raygen_prog_group_desc = {}; //
+			raygen_prog_group_desc.kind = OPTIX_PROGRAM_GROUP_KIND_RAYGEN;
+			raygen_prog_group_desc.raygen.module = mod;
+			std::string entry_name = "__raygen__rg__" + tags[i];
+			raygen_prog_group_desc.raygen.entryFunctionName = entry_name.c_str();
+			OPTIX_CHECK(optixProgramGroupCreate(m_context, &raygen_prog_group_desc,
+			                                    1, // num program groups
+			                                    &program_group_options, nullptr, 0,
+			                                    &raygen_prog_group));
+
+			OptixProgramGroupDesc miss_prog_group_desc = {};
+			miss_prog_group_desc.kind = OPTIX_PROGRAM_GROUP_KIND_MISS;
+			miss_prog_group_desc.miss.module = mod;
+			miss_prog_group_desc.miss.entryFunctionName = "__miss__ms";
+			OPTIX_CHECK(optixProgramGroupCreate(m_context, &miss_prog_group_desc,
+			                                    1, // num program groups
+			                                    &program_group_options, nullptr, 0,
+			                                    &miss_prog_group));
+
+			OptixProgramGroupDesc hitgroup_prog_group_desc = {};
+			hitgroup_prog_group_desc.kind = OPTIX_PROGRAM_GROUP_KIND_HITGROUP;
+			hitgroup_prog_group_desc.hitgroup.moduleCH = mod;
+			hitgroup_prog_group_desc.hitgroup.entryFunctionNameCH = "__closesthit__ch";
+			OPTIX_CHECK(optixProgramGroupCreate(m_context, &hitgroup_prog_group_desc,
+			                                    1, // num program groups
+			                                    &program_group_options, nullptr, 0,
+			                                    &hitgroup_prog_group));
 		}
 
-		uint32_t direct_callable_stack_size_from_traversal;
-		uint32_t direct_callable_stack_size_from_state;
-		uint32_t continuation_stack_size;
-		OPTIX_CHECK(optixUtilComputeStackSizes(&stack_sizes, max_trace_depth,
-		                                       0, // maxCCDepth
-		                                       0, // maxDCDEpth
-		                                       &direct_callable_stack_size_from_traversal,
-		                                       &direct_callable_stack_size_from_state,
-		                                       &continuation_stack_size));
-		OPTIX_CHECK(optixPipelineSetStackSize(m_pipeline, direct_callable_stack_size_from_traversal,
-		                                      direct_callable_stack_size_from_state,
-		                                      continuation_stack_size,
-		                                      1 // maxTraversableDepth
-		                                      ));
-	}
-	// std::cout << "Link pipeline ok" << std::endl;
-	//
-	//  Set up shader binding table
-	//
+		//
+		// Link pipeline
+		//
 
-	{
+		{
+			const uint32_t max_trace_depth = 1;
+			OptixProgramGroup program_groups[] = {raygen_prog_group, miss_prog_group,
+			                                      hitgroup_prog_group};
+
+			OptixPipelineLinkOptions pipeline_link_options = {};
+			pipeline_link_options.maxTraceDepth = max_trace_depth;
+			pipeline_link_options.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_FULL;
+			OPTIX_CHECK(optixPipelineCreate(m_context, &pco, &pipeline_link_options, program_groups,
+			                                sizeof(program_groups) / sizeof(program_groups[0]),
+			                                nullptr, 0, &pipeline));
+
+			OptixStackSizes stack_sizes = {};
+			for (auto &prog_group : program_groups) {
+				OPTIX_CHECK(optixUtilAccumulateStackSizes(prog_group, &stack_sizes));
+			}
+
+			uint32_t direct_callable_stack_size_from_traversal;
+			uint32_t direct_callable_stack_size_from_state;
+			uint32_t continuation_stack_size;
+			OPTIX_CHECK(optixUtilComputeStackSizes(&stack_sizes, max_trace_depth,
+			                                       0, // maxCCDepth
+			                                       0, // maxDCDEpth
+			                                       &direct_callable_stack_size_from_traversal,
+			                                       &direct_callable_stack_size_from_state,
+			                                       &continuation_stack_size));
+			OPTIX_CHECK(optixPipelineSetStackSize(
+			    pipeline, direct_callable_stack_size_from_traversal,
+			    direct_callable_stack_size_from_state, continuation_stack_size,
+			    1 // maxTraversableDepth
+			    ));
+		}
+		// std::cout << "Link pipeline ok" << std::endl;
+		//
+		//  Set up shader binding table
+		//
+
 		CUdeviceptr raygen_record;
 		const size_t raygen_record_size = sizeof(RayGenSbtRecord);
 		CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&raygen_record), raygen_record_size));
 		RayGenSbtRecord rg_sbt;
-		OPTIX_CHECK(optixSbtRecordPackHeader(m_raygen_prog_group, &rg_sbt));
+		OPTIX_CHECK(optixSbtRecordPackHeader(raygen_prog_group, &rg_sbt));
 		CUDA_CHECK(cudaMemcpy(reinterpret_cast<void *>(raygen_record), &rg_sbt, raygen_record_size,
 		                      cudaMemcpyHostToDevice));
 
@@ -152,7 +184,7 @@ void OptiXBackend::init() {
 		CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&miss_record), miss_record_size));
 		MissSbtRecord ms_sbt;
 		ms_sbt.data = {0.3f, 0.1f, 0.2f};
-		OPTIX_CHECK(optixSbtRecordPackHeader(m_miss_prog_group, &ms_sbt));
+		OPTIX_CHECK(optixSbtRecordPackHeader(miss_prog_group, &ms_sbt));
 		CUDA_CHECK(cudaMemcpy(reinterpret_cast<void *>(miss_record), &ms_sbt, miss_record_size,
 		                      cudaMemcpyHostToDevice));
 
@@ -160,33 +192,45 @@ void OptiXBackend::init() {
 		size_t hitgroup_record_size = sizeof(HitGroupSbtRecord);
 		CUDA_CHECK(cudaMalloc(reinterpret_cast<void **>(&hitgroup_record), hitgroup_record_size));
 		HitGroupSbtRecord hg_sbt;
-		OPTIX_CHECK(optixSbtRecordPackHeader(m_hitgroup_prog_group, &hg_sbt));
+		OPTIX_CHECK(optixSbtRecordPackHeader(hitgroup_prog_group, &hg_sbt));
 		CUDA_CHECK(cudaMemcpy(reinterpret_cast<void *>(hitgroup_record), &hg_sbt,
 		                      hitgroup_record_size, cudaMemcpyHostToDevice));
 
-		m_sbt.raygenRecord = raygen_record;
-		m_sbt.missRecordBase = miss_record;
-		m_sbt.missRecordStrideInBytes = sizeof(MissSbtRecord);
-		m_sbt.missRecordCount = 1;
-		m_sbt.hitgroupRecordBase = hitgroup_record;
-		m_sbt.hitgroupRecordStrideInBytes = sizeof(HitGroupSbtRecord);
-		m_sbt.hitgroupRecordCount = 1;
+		sbt.raygenRecord = raygen_record;
+		sbt.missRecordBase = miss_record;
+		sbt.missRecordStrideInBytes = sizeof(MissSbtRecord);
+		sbt.missRecordCount = 1;
+		sbt.hitgroupRecordBase = hitgroup_record;
+		sbt.hitgroupRecordStrideInBytes = sizeof(HitGroupSbtRecord);
+		sbt.hitgroupRecordCount = 1;
 	}
 
 	CUDA_CHECK(cudaStreamCreate(&m_stream));
 }
 
 void OptiXBackend::shutdown() {
-	CUDA_CHECK(cudaFree(reinterpret_cast<void *>(m_sbt.raygenRecord)));
-	CUDA_CHECK(cudaFree(reinterpret_cast<void *>(m_sbt.missRecordBase)));
-	CUDA_CHECK(cudaFree(reinterpret_cast<void *>(m_sbt.hitgroupRecordBase)));
+	for (auto &sbt : m_sbts) {
+		CUDA_CHECK(cudaFree(reinterpret_cast<void *>(sbt.raygenRecord)));
+		CUDA_CHECK(cudaFree(reinterpret_cast<void *>(sbt.missRecordBase)));
+		CUDA_CHECK(cudaFree(reinterpret_cast<void *>(sbt.hitgroupRecordBase)));
+	}
 	CUDA_CHECK(cudaFree(reinterpret_cast<void *>(m_d_gas_output_buffer)));
-	OPTIX_CHECK(optixProgramGroupDestroy(m_hitgroup_prog_group));
-	OPTIX_CHECK(optixProgramGroupDestroy(m_miss_prog_group));
-	OPTIX_CHECK(optixProgramGroupDestroy(m_raygen_prog_group));
+	for (auto &hitgroup_prog_group : m_hitgroup_prog_groups) {
+		OPTIX_CHECK(optixProgramGroupDestroy(hitgroup_prog_group));
+	}
+	for (auto &miss_prog_group : m_miss_prog_groups) {
+		OPTIX_CHECK(optixProgramGroupDestroy(miss_prog_group));
+	}
+	for (auto &raygen_prog_group : m_raygen_prog_groups) {
+		OPTIX_CHECK(optixProgramGroupDestroy(raygen_prog_group));
+	}
 	CUDA_CHECK(cudaStreamDestroy(m_stream));
-	OPTIX_CHECK(optixPipelineDestroy(m_pipeline));
-	OPTIX_CHECK(optixModuleDestroy(m_module));
+	for (auto &pipeline : m_pipelines) {
+		OPTIX_CHECK(optixPipelineDestroy(pipeline));
+	}
+	for (auto &module : m_modules) {
+		OPTIX_CHECK(optixModuleDestroy(module));
+	}
 	OPTIX_CHECK(optixDeviceContextDestroy(m_context));
 }
 

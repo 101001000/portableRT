@@ -64,4 +64,30 @@ inline bool intersect_tri(const std::array<float, 9> &vertices, const Ray &ray, 
 	return true;
 }
 
+template <class Tag> inline constexpr std::string_view tag_name_v = "unknown";
+
+template <> inline constexpr std::string_view tag_name_v<filter::uv> = "uv";
+template <> inline constexpr std::string_view tag_name_v<filter::t> = "t";
+template <> inline constexpr std::string_view tag_name_v<filter::primitive_id> = "primitive_id";
+template <> inline constexpr std::string_view tag_name_v<filter::p> = "p";
+template <> inline constexpr std::string_view tag_name_v<filter::valid> = "valid";
+
+template <class... Tags> inline std::string hitreg_name() {
+	std::string out;
+	((out += tag_name_v<Tags>, out += '_'), ...);
+	if (!out.empty())
+		out.pop_back();
+	return out;
+}
+
+inline std::vector<std::string> all_tags_combinations() {
+	std::vector<std::string> res;
+
+#define X(...) res.emplace_back(hitreg_name<ADD_FILTER(__VA_ARGS__)>());
+
+	TAG_COMBOS
+#undef X
+	return res;
+}
+
 } // namespace portableRT

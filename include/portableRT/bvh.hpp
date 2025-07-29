@@ -271,9 +271,9 @@ class BVH2 {
 			}
 		}
 		if constexpr (has_tag<filter::p, Tags...>) {
-			hit_reg.p = {ray.origin[0] + t_near * ray.direction[0],
-			             ray.origin[1] + t_near * ray.direction[1],
-			             ray.origin[2] + t_near * ray.direction[2]};
+			hit_reg.px = ray.origin[0] + t_near * ray.direction[0];
+			hit_reg.py = ray.origin[1] + t_near * ray.direction[1];
+			hit_reg.pz = ray.origin[2] + t_near * ray.direction[2];
 		}
 		return hit_reg;
 	}
