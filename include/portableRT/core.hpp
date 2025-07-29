@@ -20,7 +20,12 @@ struct Ray {
 	std::array<float, 3> direction;
 };
 
-struct Empty {};
+struct Empty {
+	template <class T> constexpr Empty &operator=(T &&) noexcept {
+		return *this;
+	} // We ignore assignments.
+	template <class T> constexpr operator T() const = delete; // Avoid compilation on data reads.
+};
 
 #define ALL_TAGS filter::uv, filter::t, filter::primitive_id, filter::p, filter::valid
 
@@ -54,7 +59,7 @@ using HitReg = HitRegImpl<has_tag<filter::uv, Tags...>, has_tag<filter::t, Tags.
                           has_tag<filter::primitive_id, Tags...>, has_tag<filter::p, Tags...>,
                           has_tag<filter::valid, Tags...>>;
 
-using FullHitReg = HitReg<filter::uv, filter::t, filter::primitive_id, filter::p, filter::valid>;
+using FullHitReg = HitReg<ALL_TAGS>;
 
 template <class... Tags> HitReg<Tags...> slice(const FullHitReg &hit) {
 	HitReg<Tags...> res;
