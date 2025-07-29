@@ -2,6 +2,7 @@
 
 #include "../include/portableRT/core.hpp"
 #include "../include/portableRT/intersect_embree_sycl.hpp"
+#include "../include/portableRT/nearesthit_inst.hpp"
 
 void enablePersistentJITCache() {
 #if defined(_WIN32)
@@ -194,8 +195,7 @@ std::vector<HitReg<Tags...>> EmbreeSYCLBackend::nearest_hits(const std::vector<R
 }
 
 // Manual instantiation
-template std::vector<HitReg<ALL_TAGS>>
-portableRT::EmbreeSYCLBackend::nearest_hits<ALL_TAGS>(const std::vector<portableRT::Ray> &);
+NEAREST_HITS_INSTANTIATE(EmbreeSYCLBackend)
 
 bool EmbreeSYCLBackend::is_available() const {
 	try {

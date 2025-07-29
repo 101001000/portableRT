@@ -6,6 +6,7 @@
 #include <stack>
 
 #include "../include/portableRT/intersect_hip.hpp"
+#include "../include/portableRT/nearesthit_inst.hpp"
 
 // https://github.com/GPUOpen-LibrariesAndSDKs/HIPRT/blob/main/hiprt/impl/hiprt_device_impl.h
 // https://github.com/GPUOpen-LibrariesAndSDKs/HIPRT/blob/main/hiprt/impl/BvhNode.h
@@ -328,8 +329,7 @@ std::vector<HitReg<Tags...>> HIPBackend::nearest_hits(const std::vector<Ray> &ra
 }
 
 // Manual instantiation
-template std::vector<FullHitReg>
-portableRT::HIPBackend::nearest_hits<ALL_TAGS>(const std::vector<portableRT::Ray> &);
+NEAREST_HITS_INSTANTIATE(HIPBackend)
 
 void HIPBackend::init() {}
 

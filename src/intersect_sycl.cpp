@@ -1,6 +1,7 @@
 #include <sycl/sycl.hpp>
 
 #include "../include/portableRT/intersect_sycl.hpp"
+#include "../include/portableRT/nearesthit_inst.hpp"
 
 namespace portableRT {
 
@@ -63,15 +64,16 @@ std::vector<HitReg<Tags...>> SYCLBackend::nearest_hits(const std::vector<Ray> &r
 		return hits;
 	} catch (sycl::_V1::exception &e) {
 		std::cout << e.what() << std::endl;
-		return std::vector<HitReg<Tags...>>(
-		    rays.size(),
-		    HitReg<Tags...>{std::numeric_limits<float>::infinity(), static_cast<uint32_t>(-1)});
+		HitReg<Tags...> hit;
+		hit.valid = false;
+		hit.t = std::numeric_limits<float>::infinity();
+		hit.primitive_id = static_cast<uint32_t>(-1);
+		return std::vector<HitReg<Tags...>>(rays.size(), hit);
 	}
 }
 
 // Manual instantiation
-template std::vector<FullHitReg>
-portableRT::SYCLBackend::nearest_hits<ALL_TAGS>(const std::vector<portableRT::Ray> &);
+NEAREST_HITS_INSTANTIATE(SYCLBackend)
 
 bool SYCLBackend::is_available() const {
 	try {
