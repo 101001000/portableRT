@@ -21,10 +21,6 @@ int main() {
 		auto hits1 = portableRT::nearest_hits({hit_ray});
 		auto hits2 = portableRT::nearest_hits({miss_ray});
 		std::cout << "Ray 1: " << hits1[0].valid << "\nRay 2: " << hits2[0].valid << std::endl;
-		std::cout << "Ray 1: " << hits1[0].t << std::endl;
-		std::cout << "Ray 1: " << hits1[0].u << std::endl;
-		std::cout << "Ray 1: " << hits1[0].v << std::endl;
-		std::cout << "Ray 1: " << hits1[0].primitive_id << std::endl;
 	}
 
 	return 0;

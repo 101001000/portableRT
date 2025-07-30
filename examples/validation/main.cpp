@@ -208,8 +208,6 @@ static unsigned char *v_data = stbi_load((get_executable_dir() + "/common/bunny.
 
 void bunny_validation(portableRT::Backend *backend) {
 
-	backend->set_tris(tris);
-
 	auto bvh_start = std::chrono::high_resolution_clock::now();
 	backend->set_tris(tris);
 	auto bvh_end = std::chrono::high_resolution_clock::now();
@@ -241,7 +239,6 @@ int main() {
 		std::cout << "Testing " << backend->name() << std::endl;
 
 		portableRT::select_backend(backend);
-
 		tri_validation(portableRT::selected_backend);
 		bunny_validation(portableRT::selected_backend);
 	}
