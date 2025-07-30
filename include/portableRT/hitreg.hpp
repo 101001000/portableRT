@@ -83,6 +83,24 @@ template <class... Tags> HitReg<Tags...> slice(const FullHitReg &hit) {
 	return res;
 }
 
+template <class... Tags> void print(const HitReg<Tags...> &hit) {
+	if constexpr (has_tag<filter::uv, Tags...>) {
+		std::cout << hit.u << " " << hit.v << " ";
+	}
+	if constexpr (has_tag<filter::t, Tags...>) {
+		std::cout << hit.t << " ";
+	}
+	if constexpr (has_tag<filter::primitive_id, Tags...>) {
+		std::cout << hit.primitive_id << " ";
+	}
+	if constexpr (has_tag<filter::p, Tags...>) {
+		std::cout << hit.px << " " << hit.py << " " << hit.pz << " ";
+	}
+	if constexpr (has_tag<filter::valid, Tags...>) {
+		std::cout << hit.valid << " ";
+	}
+}
+
 #define CAT2(a, b) a##b
 #define CAT(a, b) CAT2(a, b)
 
