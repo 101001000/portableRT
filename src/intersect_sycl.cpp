@@ -41,7 +41,7 @@ void SYCLBackend::shutdown() { m_impl.reset(); }
 template <class... Tags>
 std::vector<HitReg<Tags...>> SYCLBackend::nearest_hits(const std::vector<Ray> &rays) {
 	try {
-		FullHitReg *res = sycl::malloc_shared<FullHitReg>(rays.size(), m_impl->m_q);
+		HitReg<Tags...> *res = sycl::malloc_shared<HitReg<Tags...>>(rays.size(), m_impl->m_q);
 		Ray *rays_dev = sycl::malloc_device<Ray>(rays.size(), m_impl->m_q);
 		m_impl->m_q.memcpy(rays_dev, rays.data(), sizeof(Ray) * rays.size()).wait();
 
@@ -50,15 +50,12 @@ std::vector<HitReg<Tags...>> SYCLBackend::nearest_hits(const std::vector<Ray> &r
 		m_impl->m_q
 		    .submit([&](sycl::handler &cgh) {
 			    cgh.parallel_for(sycl::range<1>(rays.size()), [=](sycl::id<1> id) {
-				    FullHitReg hit_reg = bvh->nearest_tri<ALL_TAGS>(rays_dev[id]);
-				    res[id] = hit_reg;
+				    res[id] = bvh->nearest_tri<Tags...>(rays_dev[id]);
 			    });
 		    })
 		    .wait();
 
-		std::vector<HitReg<Tags...>> hits(rays.size());
-		std::transform(res, res + rays.size(), hits.begin(),
-		               [](const FullHitReg &h) { return slice<Tags...>(h); });
+		std::vector<HitReg<Tags...>> hits(res, res + rays.size());
 		sycl::free(res, m_impl->m_q);
 		sycl::free(rays_dev, m_impl->m_q);
 		return hits;
@@ -66,8 +63,6 @@ std::vector<HitReg<Tags...>> SYCLBackend::nearest_hits(const std::vector<Ray> &r
 		std::cout << e.what() << std::endl;
 		HitReg<Tags...> hit;
 		hit.valid = false;
-		hit.t = std::numeric_limits<float>::infinity();
-		hit.primitive_id = static_cast<uint32_t>(-1);
 		return std::vector<HitReg<Tags...>>(rays.size(), hit);
 	}
 }
