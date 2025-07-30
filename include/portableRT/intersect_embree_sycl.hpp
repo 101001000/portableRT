@@ -33,6 +33,8 @@ class EmbreeSYCLBackend : public InvokableBackend<EmbreeSYCLBackend> {
 	RTCScene m_rtcscene;
 	RTCTraversable m_rtctraversable;
 	RTCGeometry m_tri;
+	float *m_vertices = nullptr;
+	unsigned int *m_indices = nullptr;
 	unsigned int m_geom_id = RTC_INVALID_GEOMETRY_ID;
 };
 
