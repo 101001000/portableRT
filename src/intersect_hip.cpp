@@ -142,12 +142,15 @@ __device__ float2 barycentrics(float3 v0, float3 v1, float3 v2, float3 p) {
 	return {v, w};
 }
 
-__global__ void nearest_hit(void *bvh, portableRT::FullHitReg *out, portableRT::Ray *rays,
+template <class... Tags>
+__global__ void nearest_hit(void *bvh, portableRT::HitReg<Tags...> *out, portableRT::Ray *rays,
                             uint64_t size, uint64_t pos, uint64_t num_rays) {
 
 	int idx = threadIdx.x + blockIdx.x * blockDim.x;
 	if (idx >= num_rays)
 		return;
+
+	portableRT::HitReg<Tags...> hit;
 
 	float4 ray_o;
 	ray_o.x = rays[idx].origin[0];
@@ -199,7 +202,6 @@ __global__ void nearest_hit(void *bvh, portableRT::FullHitReg *out, portableRT::
 			float t = __int_as_float(res[0]) / __int_as_float(res[1]);
 			if (t < t_near) {
 				t_near = t;
-				id = res[2]; // TODO: wrong result (?)
 
 				const TriangleNode *node =
 				    reinterpret_cast<const TriangleNode *>(static_cast<uint8_t *>(bvh) + node_dir);
@@ -207,7 +209,12 @@ __global__ void nearest_hit(void *bvh, portableRT::FullHitReg *out, portableRT::
 				float3 v0 = node->m_triPair.m_v0;
 				float3 v1 = node->m_triPair.m_v1;
 				float3 v2 = node->m_triPair.m_v2;
-				p = {ray_o.x + ray_d.x * t, ray_o.y + ray_d.y * t, ray_o.z + ray_d.z * t};
+				id = node->m_primIndex0; // In theory res[2] should give this value, but it doesn't
+				                         // so I have to get it from the leaf. Is maybe a padding
+				                         // error?
+
+				float3 p = {ray_o.x + ray_d.x * t, ray_o.y + ray_d.y * t, ray_o.z + ray_d.z * t};
+
 				float2 bary = barycentrics(v0, v1, v2, p);
 				u = bary.x;
 				v = bary.y;
@@ -215,7 +222,15 @@ __global__ void nearest_hit(void *bvh, portableRT::FullHitReg *out, portableRT::
 		}
 	}
 
-	out[idx] = {u, v, t_near, id, t_near < std::numeric_limits<float>::infinity(), p.x, p.y, p.z};
+	hit.px = ray_o.x + ray_d.x * t_near;
+	hit.py = ray_o.y + ray_d.y * t_near;
+	hit.pz = ray_o.z + ray_d.z * t_near;
+	hit.u = u;
+	hit.v = v;
+	hit.primitive_id = id;
+	hit.valid = t_near < std::numeric_limits<float>::infinity();
+	hit.t = t_near;
+	out[idx] = hit;
 }
 
 namespace portableRT {
@@ -255,6 +270,7 @@ void parse_bvh3(BVH2 *bvh, std::vector<uint8_t> &data) {
 				leaf.m_triPair.m_v1 = {tri[3], tri[4], tri[5]};
 				leaf.m_triPair.m_v2 = {tri[6], tri[7], tri[8]};
 			}
+			leaf.m_primIndex0 = node.tri;
 			push_bytes(data, &leaf, sizeof(leaf));
 		} else {
 
@@ -303,27 +319,24 @@ void HIPBackend::set_tris(const Tris &tris) {
 template <class... Tags>
 std::vector<HitReg<Tags...>> HIPBackend::nearest_hits(const std::vector<Ray> &rays) {
 
-	FullHitReg *dHit;
+	HitReg<Tags...> *dHit;
 	Ray *dRays;
-	CHK(hipMalloc(&dHit, sizeof(FullHitReg) * rays.size()));
+	CHK(hipMalloc(&dHit, sizeof(HitReg<Tags...>) * rays.size()));
 	CHK(hipMalloc(&dRays, sizeof(Ray) * rays.size()));
 	CHK(hipMemcpy(dRays, rays.data(), sizeof(Ray) * rays.size(), hipMemcpyHostToDevice));
 
 	int block_size = 64;
 	int blocks = (rays.size() + block_size - 1) / block_size;
 
-	nearest_hit<<<blocks, block_size>>>(m_dbvh, dHit, dRays, 1000000000, 5, rays.size());
+	nearest_hit<Tags...><<<blocks, block_size>>>(m_dbvh, dHit, dRays, 1000000000, 5, rays.size());
 	CHK(hipDeviceSynchronize());
-	FullHitReg *hHit = new FullHitReg[rays.size()];
-	CHK(hipMemcpy(hHit, dHit, sizeof(FullHitReg) * rays.size(), hipMemcpyDeviceToHost));
-	CHK(hipFree(dHit));
-	CHK(hipFree(dRays));
 
 	std::vector<HitReg<Tags...>> hits;
-	hits.reserve(rays.size());
-	std::transform(hHit, hHit + rays.size(), std::back_inserter(hits),
-	               [](const FullHitReg &h) { return slice<Tags...>(h); });
-	delete[] hHit;
+	hits.resize(rays.size());
+
+	CHK(hipMemcpy(hits.data(), dHit, sizeof(HitReg<Tags...>) * rays.size(), hipMemcpyDeviceToHost));
+	CHK(hipFree(dHit));
+	CHK(hipFree(dRays));
 
 	return hits;
 }
