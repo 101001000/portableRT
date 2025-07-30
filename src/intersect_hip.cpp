@@ -329,7 +329,9 @@ std::vector<HitReg<Tags...>> HIPBackend::nearest_hits(const std::vector<Ray> &ra
 }
 
 // Manual instantiation
-NEAREST_HITS_INSTANTIATE(HIPBackend)
+#define X(...) INSTANTIATE_HITREG(portableRT::HIPBackend, __VA_ARGS__)
+TAG_COMBOS
+#undef X
 
 void HIPBackend::init() {}
 

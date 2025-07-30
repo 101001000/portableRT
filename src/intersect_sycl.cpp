@@ -73,7 +73,9 @@ std::vector<HitReg<Tags...>> SYCLBackend::nearest_hits(const std::vector<Ray> &r
 }
 
 // Manual instantiation
-NEAREST_HITS_INSTANTIATE(SYCLBackend)
+#define X(...) INSTANTIATE_HITREG(portableRT::SYCLBackend, __VA_ARGS__)
+TAG_COMBOS
+#undef X
 
 bool SYCLBackend::is_available() const {
 	try {

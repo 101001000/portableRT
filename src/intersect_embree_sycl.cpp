@@ -195,7 +195,9 @@ std::vector<HitReg<Tags...>> EmbreeSYCLBackend::nearest_hits(const std::vector<R
 }
 
 // Manual instantiation
-NEAREST_HITS_INSTANTIATE(EmbreeSYCLBackend)
+#define X(...) INSTANTIATE_HITREG(portableRT::EmbreeSYCLBackend, __VA_ARGS__)
+TAG_COMBOS
+#undef X
 
 bool EmbreeSYCLBackend::is_available() const {
 	try {
