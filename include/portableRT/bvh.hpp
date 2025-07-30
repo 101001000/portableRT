@@ -246,13 +246,9 @@ class BVH2 {
 				if (intersect_tri(m_tris[node.tri], ray, t, u, v)) {
 					if (t < t_near) {
 						t_near = t;
-						if constexpr (has_tag<filter::uv, Tags...>) {
-							hit_reg.u = u;
-							hit_reg.v = v;
-						}
-						if constexpr (has_tag<filter::primitive_id, Tags...>) {
-							hit_reg.primitive_id = node.tri;
-						}
+						hit_reg.u = u;
+						hit_reg.v = v;
+						hit_reg.primitive_id = node.tri;
 					}
 				}
 			} else {
@@ -260,21 +256,11 @@ class BVH2 {
 				node_stack[stack_idx++] = node.right;
 			}
 		}
-		if constexpr (has_tag<filter::t, Tags...>) {
-			hit_reg.t = t_near;
-		}
-		if constexpr (has_tag<filter::valid, Tags...>) {
-			if (t_near < std::numeric_limits<float>::infinity()) {
-				hit_reg.valid = true;
-			} else {
-				hit_reg.valid = false;
-			}
-		}
-		if constexpr (has_tag<filter::p, Tags...>) {
-			hit_reg.px = ray.origin[0] + t_near * ray.direction[0];
-			hit_reg.py = ray.origin[1] + t_near * ray.direction[1];
-			hit_reg.pz = ray.origin[2] + t_near * ray.direction[2];
-		}
+		hit_reg.t = t_near;
+		hit_reg.valid = t_near < std::numeric_limits<float>::infinity();
+		hit_reg.px = ray.origin[0] + t_near * ray.direction[0];
+		hit_reg.py = ray.origin[1] + t_near * ray.direction[1];
+		hit_reg.pz = ray.origin[2] + t_near * ray.direction[2];
 		return hit_reg;
 	}
 

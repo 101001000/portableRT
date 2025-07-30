@@ -27,28 +27,14 @@ inline portableRT::HitReg<Tags...> castRay(RTCScene scene, float ox, float oy, f
 	rtcIntersect1(scene, &rayhit);
 
 	portableRT::HitReg<Tags...> hit_reg;
-
-	if constexpr (has_tag<filter::p, Tags...>) {
-		hit_reg.p = {ox + dx * rayhit.ray.tfar, oy + dy * rayhit.ray.tfar,
-		             oz + dz * rayhit.ray.tfar};
-	}
-
-	if constexpr (has_tag<filter::t, Tags...>) {
-		hit_reg.t = rayhit.ray.tfar;
-	}
-
-	if constexpr (has_tag<filter::primitive_id, Tags...>) {
-		hit_reg.primitive_id = rayhit.hit.primID;
-	}
-
-	if constexpr (has_tag<filter::uv, Tags...>) {
-		hit_reg.u = rayhit.hit.u;
-		hit_reg.v = rayhit.hit.v;
-	}
-
-	if constexpr (has_tag<filter::valid, Tags...>) {
-		hit_reg.valid = rayhit.hit.primID != RTC_INVALID_GEOMETRY_ID;
-	}
+	hit_reg.px = ox + dx * rayhit.ray.tfar;
+	hit_reg.py = oy + dy * rayhit.ray.tfar;
+	hit_reg.pz = oz + dz * rayhit.ray.tfar;
+	hit_reg.t = rayhit.ray.tfar;
+	hit_reg.primitive_id = rayhit.hit.primID;
+	hit_reg.u = rayhit.hit.u;
+	hit_reg.v = rayhit.hit.v;
+	hit_reg.valid = rayhit.hit.primID != RTC_INVALID_GEOMETRY_ID;
 
 	return hit_reg;
 }
