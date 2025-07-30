@@ -215,7 +215,7 @@ __global__ void nearest_hit(void *bvh, portableRT::FullHitReg *out, portableRT::
 		}
 	}
 
-	out[idx] = {u, v, t_near, id, t_near < std::numeric_limits<float>::infinity(), {p.x, p.y, p.z}};
+	out[idx] = {u, v, t_near, id, t_near < std::numeric_limits<float>::infinity(), p.x, p.y, p.z};
 }
 
 namespace portableRT {

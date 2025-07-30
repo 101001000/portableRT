@@ -122,9 +122,9 @@ void castRay(sycl::queue &queue, const RTCTraversable traversable,
 			    results[item].u = rayhit.hit.u;
 			    results[item].v = rayhit.hit.v;
 			    results[item].valid = rayhit.hit.geomID != RTC_INVALID_GEOMETRY_ID;
-			    results[item].p = {rayhit.ray.org_x + rayhit.ray.tfar * rayhit.ray.dir_x,
-			                       rayhit.ray.org_y + rayhit.ray.tfar * rayhit.ray.dir_y,
-			                       rayhit.ray.org_z + rayhit.ray.tfar * rayhit.ray.dir_z};
+			    results[item].px = rayhit.ray.org_x + rayhit.ray.tfar * rayhit.ray.dir_x;
+			    results[item].py = rayhit.ray.org_y + rayhit.ray.tfar * rayhit.ray.dir_y;
+			    results[item].pz = rayhit.ray.org_z + rayhit.ray.tfar * rayhit.ray.dir_z;
 		    });
 	});
 	queue.wait_and_throw();
@@ -188,9 +188,9 @@ std::vector<HitReg<Tags...>> EmbreeSYCLBackend::nearest_hits(const std::vector<R
 		return hits;
 	} catch (sycl::_V1::exception &e) {
 		std::cout << e.what() << std::endl;
-		return std::vector<HitReg<Tags...>>(
-		    rays.size(),
-		    HitReg<Tags...>{std::numeric_limits<float>::infinity(), static_cast<uint32_t>(-1)});
+		HitReg<Tags...> hit;
+		hit.valid = false;
+		return std::vector<HitReg<Tags...>>(rays.size(), hit);
 	}
 }
 
