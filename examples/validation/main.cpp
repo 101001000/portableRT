@@ -81,7 +81,6 @@ void tri_validation(portableRT::Backend *backend) {
 	auto hits1_full = portableRT::nearest_hits({hit_ray});
 	auto hits2_full = portableRT::nearest_hits({miss_ray});
 
-	// TODO: añadir p
 	results.push_back(TestResult("FullReg Hit", "valid", backend->name(), backend->device_name(),
 	                             hits1_full[0].valid, hits1_full[0].valid));
 	results.push_back(TestResult("FullReg Hit", "t", backend->name(), backend->device_name(),
@@ -201,7 +200,9 @@ std::pair<std::vector<std::array<float, 9>>, std::vector<portableRT::Ray>> initi
 	return {tris, rays};
 }
 
-static auto [tris, rays] = initialize_bunny();
+static auto bunny = initialize_bunny();
+static auto &tris = std::get<0>(bunny);
+static auto &rays = std::get<1>(bunny);
 static int v_width, v_height, v_channels;
 static unsigned char *v_data = stbi_load((get_executable_dir() + "/common/bunny.png").c_str(),
                                          &v_width, &v_height, &v_channels, 0);
