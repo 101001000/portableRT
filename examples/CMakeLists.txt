@@ -48,6 +48,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(sponza_scene)
 
+add_example(simple)
 add_example(triangle)
 add_example(backends)
 add_example(bunny)
