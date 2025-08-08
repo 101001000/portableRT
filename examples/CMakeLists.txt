@@ -61,7 +61,7 @@ add_custom_command(TARGET sponza PRE_BUILD
           ${sponza_scene_SOURCE_DIR}/2.0/Sponza/glTF
           $<TARGET_FILE_DIR:sponza>/assets/Sponza)
 
-target_link_libraries(sponza PRIVATE SDL2::SDL2 cgltf)
+target_link_libraries(sponza PRIVATE SDL2::SDL2 cgltf stb_image)
 target_link_libraries(bunny PRIVATE stb_image tinyobj)
 target_link_libraries(validation PRIVATE stb_image tinyobj)
 

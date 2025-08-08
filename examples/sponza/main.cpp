@@ -2,34 +2,26 @@
 #include <chrono>
 #include <iomanip>
 #include <portableRT/portableRT.hpp>
+#include <unordered_map>
 
 #define CGLTF_IMPLEMENTATION
 #include <cgltf.h>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
 #include "../common/util.h"
 
-float lambert_shade(const portableRT::Tri &tri, const portableRT::Ray &ray) {
-	std::array<float, 3> v1 = {tri[0], tri[1], tri[2]};
-	std::array<float, 3> v2 = {tri[3], tri[4], tri[5]};
-	std::array<float, 3> v3 = {tri[6], tri[7], tri[8]};
+struct Texture {
+	int w, h;
+	std::vector<uint8_t> pix;
+};
+std::vector<Texture> textures;
+std::vector<cgltf_material> materials;
+std::vector<int> mat_ids; // Tri - Material ID
+std::vector<std::array<float, 6>> uvs;
 
-	std::array<float, 3> e1 = {v2[0] - v1[0], v2[1] - v1[1], v2[2] - v1[2]};
-	std::array<float, 3> e2 = {v3[0] - v1[0], v3[1] - v1[1], v3[2] - v1[2]};
-
-	std::array<float, 3> N = {e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2],
-	                          e1[0] * e2[1] - e1[1] * e2[0]};
-
-	float lenN = std::sqrt(N[0] * N[0] + N[1] * N[1] + N[2] * N[2]);
-
-	if (fabs(lenN) > 0.001) {
-		N[0] /= lenN;
-		N[1] /= lenN;
-		N[2] /= lenN;
-	}
-
-	float dotNV = N[0] * -ray.direction[0] + N[1] * -ray.direction[1] + N[2] * -ray.direction[2];
-	return std::max(0.0f, std::min(dotNV, 1.0f));
-}
+std::unordered_map<const cgltf_material *, int> mat_id;
 
 int main(int argc, char **argv) {
 	cgltf_options options = {};
@@ -43,6 +35,27 @@ int main(int argc, char **argv) {
 	std::vector<std::array<float, 9>> tris;
 
 	if (result == cgltf_result_success) {
+
+		for (size_t i = 0; i < data->materials_count; ++i) {
+			const cgltf_material *m = &data->materials[i];
+			const cgltf_texture_view *tv = &m->pbr_metallic_roughness.base_color_texture;
+			if (!tv || !tv->texture || !tv->texture->image)
+				continue;
+
+			const cgltf_image *img = tv->texture->image;
+			int w, h, c;
+			unsigned char *p = stbi_load(
+			    (get_executable_dir() + "/assets/Sponza/" + img->uri).c_str(), &w, &h, &c, 4);
+			if (!p) {
+				std::cerr << "Error cargando textura: " << img->uri << "\n";
+				continue;
+			}
+			textures.push_back({w, h, std::vector<uint8_t>(p, p + w * h * 4)});
+			stbi_image_free(p);
+			materials.push_back(*m);
+			mat_id[m] = int(materials.size()) - 1;
+		}
+
 		for (size_t i = 0; i < data->meshes_count; ++i) {
 			const cgltf_mesh &mesh = data->meshes[i];
 
@@ -51,18 +64,20 @@ int main(int argc, char **argv) {
 				if (prim.type != cgltf_primitive_type_triangles)
 					continue;
 
-				// Accede a las posiciones
 				const cgltf_accessor *pos_accessor = nullptr;
+				const cgltf_accessor *uv_accessor = nullptr;
 				const cgltf_accessor *idx_accessor = prim.indices;
 
 				for (size_t a = 0; a < prim.attributes_count; ++a) {
 					if (prim.attributes[a].type == cgltf_attribute_type_position) {
 						pos_accessor = prim.attributes[a].data;
-						break;
+					}
+					if (prim.attributes[a].type == cgltf_attribute_type_texcoord) {
+						uv_accessor = prim.attributes[a].data;
 					}
 				}
 
-				if (!pos_accessor || !idx_accessor)
+				if (!pos_accessor || !idx_accessor || !uv_accessor)
 					continue;
 
 				float *positions =
@@ -71,6 +86,9 @@ int main(int argc, char **argv) {
 
 				void *indices_data = ((uint8_t *)idx_accessor->buffer_view->buffer->data) +
 				                     idx_accessor->buffer_view->offset + idx_accessor->offset;
+
+				float *uvs_data = (float *)((uint8_t *)uv_accessor->buffer_view->buffer->data +
+				                            uv_accessor->buffer_view->offset + uv_accessor->offset);
 
 				auto get_index = [&](int i) -> int {
 					switch (idx_accessor->component_type) {
@@ -87,21 +105,26 @@ int main(int argc, char **argv) {
 
 				for (size_t i = 0; i + 2 < idx_accessor->count; i += 3) {
 					std::array<float, 9> tri;
+					std::array<float, 6> uv;
 					for (int j = 0; j < 3; ++j) {
 						int idx = get_index(i + j);
 						tri[j * 3 + 0] = positions[idx * 3 + 0];
 						tri[j * 3 + 1] = positions[idx * 3 + 1];
 						tri[j * 3 + 2] = positions[idx * 3 + 2];
+						uv[j * 2 + 0] = uvs_data[idx * 2 + 0];
+						uv[j * 2 + 1] = uvs_data[idx * 2 + 1];
 					}
+					mat_ids.push_back(mat_id[prim.material]);
 					tris.push_back(tri);
+					uvs.push_back(uv);
 				}
 			}
 		}
 		cgltf_free(data);
 	}
 
-	constexpr size_t width = 64;
-	constexpr size_t height = 64;
+	constexpr size_t width = 512;
+	constexpr size_t height = 512;
 
 	std::cout << "Select backend: " << std::endl;
 	int i = 0;
@@ -227,6 +250,8 @@ int main(int argc, char **argv) {
 
 		for (size_t i = 0; i < hits.size(); i++) {
 			bool hit = hits[i].t != std::numeric_limits<float>::infinity();
+			int primitive_id = hits[i].primitive_id;
+			int material_id = mat_ids[primitive_id];
 			if (!hit) {
 				pixels[i * 4 + 0] = 0;
 				pixels[i * 4 + 1] = 0;
@@ -234,10 +259,29 @@ int main(int argc, char **argv) {
 				pixels[i * 4 + 3] = 255;
 				continue;
 			} else {
-				float color = 255 * lambert_shade(tris[hits[i].primitive_id], rays[i]);
-				pixels[i * 4 + 0] = color;
-				pixels[i * 4 + 1] = color;
-				pixels[i * 4 + 2] = color;
+
+				float t0 = hits[i].u;
+				float t1 = hits[i].v;
+				float t2 = 1 - hits[i].u - hits[i].v;
+
+				float u = t2 * uvs[primitive_id][0] + t0 * uvs[primitive_id][2] +
+				          t1 * uvs[primitive_id][4];
+				float v = t2 * uvs[primitive_id][1] + t0 * uvs[primitive_id][3] +
+				          t1 * uvs[primitive_id][5];
+
+				u = u - std::floor(u);
+				v = v - std::floor(v);
+
+				const Texture &tex = textures[material_id];
+
+				int x = std::clamp(int(u * tex.w), 0, tex.w - 1);
+				int y = std::clamp(int(v * tex.h), 0, tex.h - 1);
+
+				int idx = (y * tex.w + x) * 4;
+
+				pixels[i * 4 + 0] = 1 * tex.pix[idx + 0];
+				pixels[i * 4 + 1] = 1 * tex.pix[idx + 1];
+				pixels[i * 4 + 2] = 1 * tex.pix[idx + 2];
 				pixels[i * 4 + 3] = 255;
 			}
 		}
