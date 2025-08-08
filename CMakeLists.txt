@@ -7,6 +7,9 @@ configure_file(
   @ONLY
 )
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 option(USE_OPTIX "Enable OptiX backend" OFF)
 option(USE_HIP "Enable HIP backend" OFF)
 option(USE_EMBREE_SYCL "Enable Embree SYCL backend" OFF)
