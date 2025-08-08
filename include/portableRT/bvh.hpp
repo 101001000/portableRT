@@ -239,12 +239,12 @@ class BVH2 {
 				continue;
 			}
 			if (node.is_leaf) {
-				if (node.tri == -1) {
+				if (node.tri == -1 || node.tri == ray.self_id) {
 					continue;
 				}
 				float t, u, v;
 				if (intersect_tri(m_tris[node.tri], ray, t, u, v)) {
-					if (t < t_near) {
+					if (t < t_near && t > ray.tmin && t < ray.tmax) {
 						t_near = t;
 						hit_reg.u = u;
 						hit_reg.v = v;

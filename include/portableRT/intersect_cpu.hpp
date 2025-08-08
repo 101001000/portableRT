@@ -21,17 +21,19 @@ class CPUBackend : public InvokableBackend<CPUBackend> {
 	std::vector<HitReg<Tags...>> nearest_hits(const std::vector<Ray> &rays) {
 		std::vector<HitReg<Tags...>> hits(rays.size());
 
-		clear_affinity();
-
-		unsigned n = std::thread::hardware_concurrency();
-		std::vector<std::thread> threads;
-		threads.reserve(n);
-
+		int n = std::thread::hardware_concurrency();
 		int rays_per_thread = rays.size() / n;
 
-		for (unsigned i = 0; i < n; ++i) {
-			threads.emplace_back(check_hit<Tags...>, i * rays_per_thread, std::cref(rays),
-			                     std::ref(hits), rays_per_thread, std::ref(m_bvh));
+		if (rays_per_thread != 0) {
+
+			clear_affinity();
+			threads.clear();
+			threads.reserve(n);
+
+			for (unsigned i = 0; i < n; ++i) {
+				threads.emplace_back(check_hit<Tags...>, i * rays_per_thread, std::cref(rays),
+				                     std::ref(hits), rays_per_thread, std::ref(m_bvh));
+			}
 		}
 
 		for (auto &thread : threads)
@@ -50,6 +52,7 @@ class CPUBackend : public InvokableBackend<CPUBackend> {
 
   private:
 	BVH2 m_bvh;
+	std::vector<std::thread> threads;
 };
 
 static CPUBackend cpu_backend;

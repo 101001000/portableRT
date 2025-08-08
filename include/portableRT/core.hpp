@@ -19,6 +19,9 @@ inline void clear_affinity() {
 struct Ray {
 	std::array<float, 3> origin;
 	std::array<float, 3> direction;
+	float tmin = 0.0f;
+	float tmax = std::numeric_limits<float>::max();
+	uint32_t self_id = -1;
 };
 
 using Tri = std::array<float, 9>;
